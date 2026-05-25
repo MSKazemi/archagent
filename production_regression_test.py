@@ -47,6 +47,18 @@ def main():
     assert help_result.returncode == 0, help_result.stderr
     assert "--dry-run" in help_result.stdout, help_result.stdout
 
+    area_result = subprocess.run(
+        [sys.executable, "expert_worker_importer.py", "--list-areas"],
+        cwd=BASE,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=5,
+    )
+    assert area_result.returncode == 0, area_result.stderr
+    for city in ("Rome", "Milan", "Turin", "Naples", "Bologna"):
+        assert city in area_result.stdout, area_result.stdout
+
     env = os.environ.copy()
     env["ARCHAGENT_TOKEN"] = TOKEN
     proc = subprocess.Popen(

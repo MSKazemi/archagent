@@ -71,13 +71,17 @@ SEARCHES = [
         "name": "painting_recent",
         "query": "deadline-receipt-tender-date-lot >= today(0) AND publication-date >= today(-180) AND (title-proc~painting OR description-lot~painting OR title-proc~peinture OR description-lot~peinture OR title-proc~maler OR description-lot~maler) SORT BY publication-date DESC",
     },
+    {
+        "name": "italy_building_active",
+        "query": "deadline-receipt-tender-date-lot >= today(0) AND publication-date >= today(-180) AND (place-of-performance-country-lot=ITA OR organisation-country-buyer=ITA) AND (classification-cpv=45* OR title-proc~ristrutturazione OR description-lot~ristrutturazione OR title-proc~riqualificazione OR description-lot~riqualificazione OR title-proc~restauro OR description-lot~restauro OR title-proc~efficientamento OR description-lot~efficientamento OR title-proc~energetico OR description-lot~energetico OR title-proc~impianti OR description-lot~impianti OR title-proc~facciata OR description-lot~facciata OR title-proc~serramenti OR description-lot~serramenti OR title-proc~isolamento OR description-lot~isolamento OR title-proc~copertura OR description-lot~copertura) SORT BY publication-date DESC",
+    },
 ]
 
 CATEGORY_RULES = [
-    ("energy / HVAC / solar", ["hvac", "ventilation", "heating", "heat pump", "photovoltaic", "solar", "boiler", "air conditioning", "climatisation"]),
-    ("insulation / facade / envelope", ["insulation", "isolation", "dämm", "facade", "façade", "window", "glazing", "roof", "envelope"]),
-    ("renovation / rehabilitation", ["renovation", "réhabilitation", "rehabilitation", "refurbishment", "sanierung", "modernisation", "upgrade"]),
-    ("painting / finishing", ["painting", "peinture", "paint", "coating", "maler", "finishing", "plaster"]),
+    ("energy / HVAC / solar", ["hvac", "ventilation", "heating", "heat pump", "photovoltaic", "solar", "boiler", "air conditioning",        "climatisation", "impianti", "riscaldamento", "condizionamento", "termici", "energetico", "efficientamento", "riqualificazione energetica"]),
+    ("insulation / facade / envelope", ["insulation", "isolation", "dämm", "facade", "façade", "window", "glazing", "roof", "envelope", "isolamento", "facciata", "facciate", "serramenti", "copertura", "coperture", "tetto"]),
+    ("renovation / rehabilitation", ["renovation", "réhabilitation", "rehabilitation", "refurbishment", "sanierung", "modernisation", "upgrade", "ristrutturazione", "riqualificazione", "restauro", "messa in sicurezza", "recupero", "risanamento"]),
+    ("painting / finishing", ["painting", "peinture", "paint", "coating", "maler", "finishing", "plaster", "tinteggiatura", "pittura", "verniciatura", "intonaco", "finiture"]),
     ("architecture / design", ["architect", "design", "engineering", "studies", "maîtrise", "project management"]),
     ("construction / civil works", ["construction", "building", "works", "travaux", "bau", "civil"]),
 ]
@@ -255,7 +259,7 @@ def classify(title: str, description: str, cpv_codes: str) -> tuple[str, int]:
 
     if any(code.startswith("45") for code in re.findall(r"\d{8}", cpv_codes)):
         score += 20
-    if any(term in haystack for term in ["renovation", "réhabilitation", "insulation", "hvac", "facade", "photovoltaic", "painting", "window"]):
+    if any(term in haystack for term in ["renovation", "réhabilitation", "insulation", "hvac", "facade", "photovoltaic", "painting", "window", "ristrutturazione", "riqualificazione", "restauro", "efficientamento", "facciata", "serramenti", "isolamento", "copertura"]):
         score += 15
     if any(term in haystack for term in ["school", "hospital", "housing", "apartment", "hotel", "office", "public building"]):
         score += 10
