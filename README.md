@@ -21,6 +21,9 @@ This repository contains a working API-backed MVP:
 - `proposal_engine.py` — deterministic proposal/compliance/audit logic.
 - `project_finder.py` — TED lead ingestion.
 - `expert_worker_importer.py` — OSM/Overpass expert-worker importer.
+- `italy_refresh.py` — repeatable Italy refresh: TED leads, OSM listings, seeded profiles, report.
+- `italy_market_report.py` — generates `ITALY_MARKET_REPORT.md` from local public-data DBs.
+- `seed_italy_profiles.py` — seeds Italy-specific lead-radar customer profiles.
 - `smoke_test.py` — main end-to-end smoke test.
 - `production_regression_test.py` — production hardening regression test.
 
@@ -88,6 +91,23 @@ python3 project_finder.py --limit-per-search 50 --report-limit 50
 
 This updates `archagent_actionable_projects.sqlite3`, `ACTIONABLE_PROJECTS.md`, `actionable_projects.csv`, and `actionable_projects.json`.
 
+## Refresh Italy market data
+
+```bash
+python3 italy_refresh.py
+```
+
+This refreshes Italy-focused TED leads, imports public OSM expert/worker/supplier listings for Rome, Milan, Turin, Naples, and Bologna, seeds Italy customer profiles, and regenerates `ITALY_MARKET_REPORT.md`.
+
+Faster variants:
+
+```bash
+python3 italy_refresh.py --skip-workers
+python3 italy_refresh.py --skip-tenders
+python3 italy_market_report.py
+python3 seed_italy_profiles.py
+```
+
 ## Import public expert/worker listings
 
 List configured areas:
@@ -115,7 +135,7 @@ Important: OpenStreetMap/Overpass records are public unverified listings, not ve
 ```text
 GET  /api/health
 GET  /api/stats
-GET  /api/leads?q=&country=&category=&sort=&limit=&offset=
+GET  /api/leads?q=&country=&category=&min_value=&sort=&limit=&offset=
 GET  /api/lead?id=<source_notice_id>
 GET  /api/customer-profiles
 POST /api/customer-profiles

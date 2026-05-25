@@ -149,6 +149,10 @@ def query_leads(params):
     where = ['deadline_date IS NOT NULL']; args = []
     if country: where.append('(performance_country=? OR buyer_country=?)'); args += [country, country]
     if category: where.append('category=?'); args.append(category)
+    min_value = (params.get('min_value') or [''])[0]
+    if min_value not in ('', None):
+        where.append('(estimated_value IS NOT NULL AND estimated_value >= ?)')
+        args.append(float(min_value))
     if q:
         where.append('(lower(title) LIKE ? OR lower(description) LIKE ? OR lower(buyer_name) LIKE ? OR lower(performance_city) LIKE ? OR lower(cpv_codes) LIKE ?)'); like = f'%{q}%'; args += [like] * 5
     order = {'score':'relevance_score DESC, deadline_date ASC','value':'estimated_value DESC, relevance_score DESC'}.get(sort, 'deadline_date ASC, relevance_score DESC')
@@ -226,6 +230,8 @@ def profile_to_lead_params(profile, params):
             lead_params['country'] = [countries[0]]
         if categories and not lead_params.get('category'):
             lead_params['category'] = [categories[0]]
+        if profile.get('min_value') not in ('', None) and not lead_params.get('min_value'):
+            lead_params['min_value'] = [str(profile.get('min_value'))]
     return lead_params
 
 def recommendation_for_lead(lead):

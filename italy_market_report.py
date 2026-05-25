@@ -61,8 +61,80 @@ STRONG_BUILDING_TERMS = (
 )
 
 
+CITY_ALIASES = {
+    "milan": "Milano",
+    "milano": "Milano",
+    "milano (mi)": "Milano",
+    "roma": "Roma",
+    "rome": "Roma",
+    "turin": "Torino",
+    "torino": "Torino",
+    "naples": "Napoli",
+    "napoli": "Napoli",
+    "bologna": "Bologna",
+    "ragusa": "Ragusa",
+    "matera matera (mt)": "Matera",
+    "vercelli": "Vercelli",
+    "viterbo": "Viterbo",
+    "genova (ge)": "Genova",
+    "sassari (ss)": "Sassari",
+    "feldthurns / velturno": "Velturno / Feldthurns",
+}
+
+REGION_HINTS = {
+    "Milano": "Lombardia",
+    "Sesto San Giovanni": "Lombardia",
+    "Moglia di Sermide": "Lombardia",
+    "Torino": "Piemonte",
+    "Cuneo": "Piemonte",
+    "Vercelli": "Piemonte",
+    "Roma": "Lazio",
+    "Viterbo": "Lazio",
+    "Napoli": "Campania",
+    "Bologna": "Emilia-Romagna",
+    "Noceto": "Emilia-Romagna",
+    "Matera": "Basilicata",
+    "Ragusa": "Sicilia",
+    "Messina": "Sicilia",
+    "Palermo": "Sicilia",
+    "Genova": "Liguria",
+    "Aulla": "Toscana",
+    "Quarrata": "Toscana",
+    "Roncade": "Veneto",
+    "Bassano del Grappa": "Veneto",
+    "Chioggia": "Veneto",
+    "Trento": "Trentino-Alto Adige",
+    "Velturno / Feldthurns": "Trentino-Alto Adige",
+    "Castelsantangelo sul Nera": "Marche",
+    "Sassari": "Sardegna",
+    "Terni": "Umbria",
+}
+
+
 def clean(value) -> str:
     return " ".join(str(value or "").replace("\n", " ").split())
+
+
+def normalize_city(value: str) -> str:
+    text = clean(value)
+    if not text:
+        return "Not specified"
+    low = text.lower()
+    if low in CITY_ALIASES:
+        return CITY_ALIASES[low]
+    if "messina" in low:
+        return "Messina"
+    if "alessandria" in low:
+        return "Alessandria / Asti / Cuneo"
+    if "chioggia" in low:
+        return "Chioggia"
+    if "castelsantangelo" in low:
+        return "Castelsantangelo sul Nera"
+    return text
+
+
+def region_for_city(city: str) -> str:
+    return REGION_HINTS.get(city, "Not specified")
 
 
 def is_qualified_italy_lead(row: dict) -> bool:
@@ -112,10 +184,12 @@ def main() -> int:
     leads = load_leads()
     workers = load_workers()
     by_cat = collections.Counter(l.get("category") or "unknown" for l in leads)
-    by_city = collections.Counter(clean(l.get("performance_city")) or "Not specified" for l in leads)
+    by_city = collections.Counter(normalize_city(l.get("performance_city")) for l in leads)
+    by_region = collections.Counter(region_for_city(normalize_city(l.get("performance_city"))) for l in leads)
     visible_eur = sum(float(l["estimated_value"] or 0) for l in leads if (l.get("currency") or "") == "EUR")
     worker_type = collections.Counter(w.get("worker_type") or "unknown" for w in workers)
-    worker_city = collections.Counter(w.get("city") or "Not specified" for w in workers)
+    worker_city = collections.Counter(normalize_city(w.get("city")) for w in workers)
+    worker_region = collections.Counter(region_for_city(normalize_city(w.get("city"))) for w in workers)
     worker_trades = collections.Counter(w.get("trades") or "unknown" for w in workers)
     with_contact = sum(1 for w in workers if w.get("phone") or w.get("email") or w.get("website"))
 
@@ -141,6 +215,8 @@ def main() -> int:
         "",
     ]
     lines += [f"- {k}: {v}" for k, v in by_cat.most_common()]
+    lines += ["", "## Italy tender leads by region", ""]
+    lines += [f"- {k}: {v}" for k, v in by_region.most_common(25)]
     lines += ["", "## Italy tender leads by city / area", ""]
     lines += [f"- {k}: {v}" for k, v in by_city.most_common(25)]
     lines += [
@@ -153,12 +229,14 @@ def main() -> int:
     for lead in leads[:35]:
         lines.append(
             f"| {lead.get('relevance_score')} | {lead.get('source_notice_id')} | {lead.get('deadline_date') or ''} | "
-            f"{clean(lead.get('performance_city')).replace('|','-')} | {clean(lead.get('category')).replace('|','-')} | "
+            f"{normalize_city(lead.get('performance_city')).replace('|','-')} | {clean(lead.get('category')).replace('|','-')} | "
             f"{clean(lead.get('buyer_name')).replace('|','-')[:80]} | {value_label(lead)} | "
             f"{clean(lead.get('title')).replace('|','-')[:150]} | [TED]({lead.get('source_url') or ''}) |"
         )
     lines += ["", "## Italy public expert/worker/supplier coverage", ""]
     lines += [f"- {k}: {v}" for k, v in worker_type.most_common()]
+    lines += ["", "### By region", ""]
+    lines += [f"- {k}: {v}" for k, v in worker_region.most_common(25)]
     lines += ["", "### By city", ""]
     lines += [f"- {k}: {v}" for k, v in worker_city.most_common(25)]
     lines += ["", "### By trade group", ""]
@@ -168,7 +246,7 @@ def main() -> int:
         contact = worker.get("website") or worker.get("email") or worker.get("phone") or worker.get("source_url") or ""
         lines.append(
             f"| {clean(worker.get('name')).replace('|','-')[:80]} | {worker.get('worker_type') or ''} | "
-            f"{clean(worker.get('trades')).replace('|','-')} | {clean(worker.get('city'))} | {contact} |"
+            f"{clean(worker.get('trades')).replace('|','-')} | {normalize_city(worker.get('city'))} | {contact} |"
         )
     lines += [
         "",

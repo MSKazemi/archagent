@@ -69,6 +69,8 @@ def main():
         text=True,
         env=env,
     )
+    created_profile_id = None
+    created_export_paths = []
     try:
         for _ in range(40):
             try:
@@ -93,16 +95,19 @@ def main():
             "max_leads": 12,
             "status": "pilot"
         })
+        created_profile_id = profile["id"]
         assert profile["id"], profile
         profiles = fetch("/api/customer-profiles")
         assert any(p["id"] == profile["id"] for p in profiles["items"]), profiles
 
         report = fetch(f"/api/lead-radar/export?profile_id={profile['id']}&limit=8&format=markdown")
+        created_export_paths.append(report["export_path"])
         assert report["export_path"].endswith(".md"), report
         assert "Lead Radar Report" in report["markdown"], report["markdown"][:200]
         assert len(report["items"]) <= 8, len(report["items"])
 
         csv_report = fetch(f"/api/lead-radar/export?profile_id={profile['id']}&limit=8&format=csv")
+        created_export_paths.append(csv_report["export_path"])
         assert csv_report["export_path"].endswith(".csv"), csv_report
         assert "source_notice_id" in csv_report["csv"], csv_report["csv"][:200]
 
@@ -113,6 +118,20 @@ def main():
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             proc.kill()
+        if created_profile_id or created_export_paths:
+            import sqlite3
+            con = sqlite3.connect(BASE / "archagent_app.sqlite3")
+            if created_profile_id:
+                con.execute("DELETE FROM customer_profiles WHERE id=?", (created_profile_id,))
+                con.execute("DELETE FROM lead_radar_exports WHERE profile_id=?", (created_profile_id,))
+                con.execute("DELETE FROM activities WHERE payload_json LIKE ? OR message LIKE ?", (f"%{created_profile_id}%", f"%#{created_profile_id}%"))
+            con.commit()
+            con.close()
+            for path in created_export_paths:
+                try:
+                    Path(path).unlink()
+                except FileNotFoundError:
+                    pass
 
 
 if __name__ == "__main__":
