@@ -11,6 +11,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from proposal_engine import compliance_matrix_markdown, generate_building_audit, generate_compliance_matrix, generate_crm_followup, generate_outreach_pack, generate_proposal, lead_to_public_dict
+from tender_document_collector import build_tender_dossier, select_top_italy_leads
 
 BASE = Path(__file__).resolve().parent
 LEADS_DB = BASE / 'archagent_actionable_projects.sqlite3'
@@ -100,6 +101,30 @@ def init_app_db() -> None:
       export_path TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS tender_dossiers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_notice_id TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'api',
+      italy_fit_score INTEGER,
+      italy_wedge TEXT,
+      recommended_offer TEXT,
+      risks_json TEXT,
+      export_path TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS worker_verifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      worker_id INTEGER NOT NULL,
+      verification_status TEXT NOT NULL,
+      contact_status TEXT,
+      capabilities TEXT,
+      regions_served TEXT,
+      languages TEXT,
+      certifications TEXT,
+      notes TEXT,
+      verified_by TEXT,
+      verified_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS expert_workers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       source TEXT NOT NULL,
@@ -181,7 +206,7 @@ def create_prospect(payload):
     con.commit(); row = con.execute('SELECT * FROM prospects WHERE id=?', (pid,)).fetchone(); con.close(); return dict(row)
 
 def list_table(name):
-    allowed = {'prospects','followups','proposals','contractors','activities','customer_profiles','lead_radar_exports'}
+    allowed = {'prospects','followups','proposals','contractors','activities','customer_profiles','lead_radar_exports','tender_dossiers','worker_verifications'}
     if name not in allowed:
         raise ValueError('invalid table')
     con = app_conn(); rows = con.execute(f'SELECT * FROM {name} ORDER BY id DESC LIMIT 200').fetchall(); con.close(); return rows_to_dicts(rows)
@@ -285,11 +310,12 @@ def export_lead_radar(params):
     return payload
 
 def query_workers(params):
-    q = (params.get('q') or [''])[0].strip().lower(); country = (params.get('country') or [''])[0].strip(); worker_type = (params.get('type') or [''])[0].strip(); trade = (params.get('trade') or [''])[0].strip().lower()
+    q = (params.get('q') or [''])[0].strip().lower(); country = (params.get('country') or [''])[0].strip(); worker_type = (params.get('type') or [''])[0].strip(); trade = (params.get('trade') or [''])[0].strip().lower(); verification_status = (params.get('verification_status') or [''])[0].strip()
     limit = min(int((params.get('limit') or ['100'])[0] or 100), 500); offset = int((params.get('offset') or ['0'])[0] or 0)
     where = ['1=1']; args = []
     if country: where.append('country=?'); args.append(country)
     if worker_type: where.append('worker_type=?'); args.append(worker_type)
+    if verification_status: where.append('verification_status=?'); args.append(verification_status)
     if trade: where.append('lower(trades) LIKE ?'); args.append(f'%{trade}%')
     if q:
         where.append('(lower(name) LIKE ? OR lower(trades) LIKE ? OR lower(city) LIKE ? OR lower(address) LIKE ?)'); like = f'%{q}%'; args += [like] * 4
@@ -298,13 +324,63 @@ def query_workers(params):
     total = con.execute(f'SELECT COUNT(*) FROM expert_workers WHERE {where_sql}', args).fetchone()[0]
     con.close(); return {'total': total, 'items': rows_to_dicts(rows)}
 
+def export_workers(params):
+    fmt = (params.get('format') or ['csv'])[0].lower()
+    if fmt != 'csv': raise ValueError('only csv worker export is supported')
+    data = query_workers(params)
+    EXPORT_DIR.mkdir(exist_ok=True)
+    stamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    country = (params.get('country') or ['all'])[0] or 'all'
+    safe_country = ''.join(ch if ch.isalnum() or ch in ('-', '_') else '_' for ch in country)[:40]
+    path = EXPORT_DIR / f'worker_candidates_{safe_country}_{stamp}.csv'
+    fields = ['id','name','worker_type','trades','country','city','address','phone','email','website','verification_status','source_url']
+    buf = io.StringIO(); writer = csv.DictWriter(buf, fieldnames=fields); writer.writeheader()
+    for item in data['items']:
+        writer.writerow({k: item.get(k, '') for k in fields})
+    content = buf.getvalue(); path.write_text(content, encoding='utf-8')
+    return {'format': 'csv', 'total': data['total'], 'item_count': len(data['items']), 'export_path': str(path), 'url': '/exports/' + path.name, 'csv': content}
+
 def worker_stats():
     con = app_conn()
     total = con.execute('SELECT COUNT(*) FROM expert_workers').fetchone()[0]
     types = rows_to_dicts(con.execute('SELECT worker_type, COUNT(*) count FROM expert_workers GROUP BY worker_type ORDER BY count DESC').fetchall())
     countries = rows_to_dicts(con.execute('SELECT country, COUNT(*) count FROM expert_workers GROUP BY country ORDER BY count DESC').fetchall())
     trades = rows_to_dicts(con.execute('SELECT trades, COUNT(*) count FROM expert_workers GROUP BY trades ORDER BY count DESC LIMIT 20').fetchall())
-    con.close(); return {'total_workers': total, 'types': types, 'countries': countries, 'trades': trades, 'source': 'OpenStreetMap Overpass public listings', 'verification_status': 'public_listing_unverified'}
+    verifications = rows_to_dicts(con.execute('SELECT verification_status, COUNT(*) count FROM expert_workers GROUP BY verification_status ORDER BY count DESC').fetchall())
+    con.close(); return {'total_workers': total, 'types': types, 'countries': countries, 'trades': trades, 'verifications': verifications, 'source': 'OpenStreetMap Overpass public listings', 'verification_status': 'public_listing_unverified'}
+
+def verify_worker(payload):
+    worker_id = int(payload.get('worker_id') or payload.get('id') or 0)
+    if not worker_id: raise ValueError('worker_id is required')
+    status = payload.get('verification_status') or payload.get('status') or 'contacted'
+    allowed = {'public_listing_unverified','contacted','replied','qualified','rejected','qualified_test'}
+    if status not in allowed: raise ValueError('invalid verification_status')
+    con = app_conn()
+    row = con.execute('SELECT * FROM expert_workers WHERE id=?', (worker_id,)).fetchone()
+    if not row:
+        con.close(); raise ValueError('worker not found')
+    verified_at = now()
+    con.execute('UPDATE expert_workers SET verification_status=?, updated_at=? WHERE id=?', (status, verified_at, worker_id))
+    cur = con.execute('''INSERT INTO worker_verifications(worker_id,verification_status,contact_status,capabilities,regions_served,languages,certifications,notes,verified_by,verified_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?)''', (worker_id, status, payload.get('contact_status',''), payload.get('capabilities',''), payload.get('regions_served',''), payload.get('languages',''), payload.get('certifications',''), payload.get('notes',''), payload.get('verified_by','ArchAgent operator'), verified_at))
+    con.execute('INSERT INTO activities(kind,message,payload_json,created_at) VALUES (?,?,?,?)', ('worker_verification', f'Updated worker #{worker_id} verification to {status}', json.dumps(payload, ensure_ascii=False), verified_at))
+    con.commit(); updated = dict(con.execute('SELECT id,name,worker_type,trades,country,city,phone,email,website,verification_status,source_url FROM expert_workers WHERE id=?', (worker_id,)).fetchone()); updated['verification_id'] = cur.lastrowid; con.close(); return updated
+
+def italy_summary():
+    top = select_top_italy_leads(limit=10, min_score=50)
+    con = app_conn()
+    italy_workers = con.execute("SELECT COUNT(*) FROM expert_workers WHERE country='Italy'").fetchone()[0]
+    italy_profiles = con.execute("SELECT COUNT(*) FROM customer_profiles WHERE countries LIKE '%ITA%'").fetchone()[0]
+    verified_workers = con.execute("SELECT COUNT(*) FROM expert_workers WHERE country='Italy' AND verification_status NOT IN ('public_listing_unverified','')").fetchone()[0]
+    dossiers = con.execute('SELECT COUNT(*) FROM tender_dossiers').fetchone()[0]
+    con.close()
+    visible_value = sum(float(l.get('estimated_value') or 0) for l in top if (l.get('currency') or '') == 'EUR')
+    return {'qualified_italy_leads': len(select_top_italy_leads(limit=100, min_score=50)), 'top_leads': top, 'visible_top10_eur': visible_value, 'italy_workers': italy_workers, 'verified_italy_workers': verified_workers, 'italy_profiles': italy_profiles, 'tender_dossiers': dossiers, 'report_path': str(BASE / 'ITALY_MARKET_REPORT.md')}
+
+def create_tender_dossier_payload(payload):
+    notice_id = payload.get('lead_notice_id') or payload.get('notice_id')
+    if not notice_id: raise ValueError('notice_id is required')
+    return build_tender_dossier(notice_id, source=payload.get('source') or 'api', save=payload.get('save', True))
 
 def generate_compliance_for_payload(payload):
     notice_id = payload.get('lead_notice_id') or payload.get('notice_id')
@@ -461,18 +537,22 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if parsed.path == '/api/health': return self.json({'ok': True, 'auth_enabled': auth_enabled(), 'time': now()})
             if parsed.path == '/api/stats': return self.json(stats())
+            if parsed.path == '/api/italy/summary': return self.json(italy_summary())
             if parsed.path == '/api/leads': return self.json(query_leads(params))
             if parsed.path == '/api/lead': return self.json(get_lead((params.get('id') or [''])[0]) or {})
             if parsed.path == '/api/prospects': return self.json({'items': list_table('prospects')})
             if parsed.path == '/api/customer-profiles': return self.json({'items': list_table('customer_profiles')})
             if parsed.path == '/api/lead-radar/export': return self.json(export_lead_radar(params))
             if parsed.path == '/api/lead-radar/exports': return self.json({'items': list_table('lead_radar_exports')})
+            if parsed.path == '/api/tender-dossiers': return self.json({'items': list_table('tender_dossiers')})
             if parsed.path == '/api/followups': return self.json({'items': list_table('followups')})
             if parsed.path == '/api/proposals': return self.json({'items': list_table('proposals')})
             if parsed.path == '/api/proposals/export': return self.json(export_proposal(params))
             if parsed.path == '/api/contractors': return self.json({'items': list_table('contractors')})
             if parsed.path == '/api/workers': return self.json(query_workers(params))
+            if parsed.path == '/api/workers/export': return self.json(export_workers(params))
             if parsed.path == '/api/worker-stats': return self.json(worker_stats())
+            if parsed.path == '/api/worker-verifications': return self.json({'items': list_table('worker_verifications')})
             if parsed.path == '/api/activities': return self.json({'items': list_table('activities')})
             if parsed.path == '/app': self.path = '/app.html'; return super().do_GET()
             return super().do_GET()
@@ -487,6 +567,8 @@ class Handler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/followups': return self.json(create_followup(payload), 201)
             if parsed.path == '/api/proposals': return self.json(create_proposal(payload, use_hermes=False), 201)
             if parsed.path == '/api/proposals/hermes': return self.json(create_proposal(payload, use_hermes=True), 201)
+            if parsed.path == '/api/tender-dossiers': return self.json(create_tender_dossier_payload(payload), 201)
+            if parsed.path == '/api/workers/verify': return self.json(verify_worker(payload), 201)
             if parsed.path == '/api/compliance': return self.json(generate_compliance_for_payload(payload), 201)
             if parsed.path == '/api/audit': return self.json({'body': generate_building_audit(payload)})
             if parsed.path == '/api/match': return self.json({'items': match_contractors(payload)})

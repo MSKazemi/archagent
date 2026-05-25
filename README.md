@@ -22,10 +22,15 @@ This repository contains a working API-backed MVP:
 - `project_finder.py` — TED lead ingestion.
 - `expert_worker_importer.py` — OSM/Overpass expert-worker importer.
 - `italy_refresh.py` — repeatable Italy refresh: TED leads, OSM listings, seeded profiles, report.
+- `tender_document_collector.py` — Italy fit scoring and bid-readiness dossier generation.
+- `archagent_production_refresh.py` — backup + refresh + top dossier generation + regression wrapper.
+- `archagent_backup.py` — safe timestamped SQLite/export backups.
+- `DEPLOYMENT.md` — systemd, backups, HTTPS, and refresh operations guide.
 - `italy_market_report.py` — generates `ITALY_MARKET_REPORT.md` from local public-data DBs.
 - `seed_italy_profiles.py` — seeds Italy-specific lead-radar customer profiles.
 - `smoke_test.py` — main end-to-end smoke test.
 - `production_regression_test.py` — production hardening regression test.
+- `production_italy_test.py` — Italy scoring/dossier/verification regression test.
 
 ## Canonical databases
 
@@ -74,6 +79,7 @@ curl http://127.0.0.1:8091/api/health
 cd /opt/archagent
 python3 smoke_test.py
 python3 production_regression_test.py
+python3 production_italy_test.py
 ```
 
 Expected:
@@ -81,6 +87,7 @@ Expected:
 ```text
 PASS smoke: leads, proposal, compliance, export, prospect, follow-up, match, outreach, dossier, workers, audit
 PASS production regression: importer help, auth, customer profiles, lead radar exports
+PASS production Italy workflows: scoring, dossiers, summary, worker verification
 ```
 
 ## Refresh project leads
@@ -106,6 +113,8 @@ python3 italy_refresh.py --skip-workers
 python3 italy_refresh.py --skip-tenders
 python3 italy_market_report.py
 python3 seed_italy_profiles.py
+python3 tender_document_collector.py --limit 5 --min-score 60
+python3 archagent_production_refresh.py --skip-workers --dossiers 5
 ```
 
 ## Import public expert/worker listings
@@ -135,6 +144,7 @@ Important: OpenStreetMap/Overpass records are public unverified listings, not ve
 ```text
 GET  /api/health
 GET  /api/stats
+GET  /api/italy/summary
 GET  /api/leads?q=&country=&category=&min_value=&sort=&limit=&offset=
 GET  /api/lead?id=<source_notice_id>
 GET  /api/customer-profiles
@@ -149,11 +159,16 @@ GET  /api/proposals
 POST /api/proposals
 POST /api/proposals/hermes
 GET  /api/proposals/export?id=<proposal_id>
+GET  /api/tender-dossiers
+POST /api/tender-dossiers
 POST /api/compliance
 POST /api/dossier
 GET  /api/contractors
-GET  /api/workers?q=&country=&type=&trade=&limit=&offset=
+GET  /api/workers?q=&country=&type=&trade=&verification_status=&limit=&offset=
+GET  /api/workers/export?country=&type=&trade=&verification_status=&limit=&format=csv
 GET  /api/worker-stats
+GET  /api/worker-verifications
+POST /api/workers/verify
 POST /api/match
 POST /api/outreach
 POST /api/audit
@@ -169,4 +184,4 @@ Start with a narrow paid workflow:
 3. Bid package upsell: compliance matrix, proposal draft, partner outreach.
 4. Contractor verification: mark listings contacted/replied/qualified before matchmaking claims.
 
-Do not expose the app publicly without `ARCHAGENT_TOKEN`, HTTPS, backups, and a deployment supervisor.
+Do not expose the app publicly without `ARCHAGENT_TOKEN`, HTTPS, backups, and a deployment supervisor. See `DEPLOYMENT.md` for systemd/timer/Caddy examples.

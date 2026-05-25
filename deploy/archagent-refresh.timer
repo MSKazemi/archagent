@@ -1,0 +1,10 @@
+[Unit]
+Description=ArchAgent daily Italy refresh
+
+[Timer]
+OnCalendar=*-*-* 06:30:00
+Persistent=true
+Unit=archagent-refresh.service
+
+[Install]
+WantedBy=timers.target
