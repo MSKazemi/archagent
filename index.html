@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArchAgent — AI Building Project Operating System</title>
+  <meta name="description" content="ArchAgent is an AI-powered renovation and energy optimization platform that audits buildings, recommends thermal/material upgrades, matches contractors, and automates retrofit proposals." />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600&family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --ink: #061b31;
+      --text: #506078;
+      --label: #273951;
+      --muted: #f6f9fc;
+      --line: #e5edf5;
+      --purple: #533afd;
+      --purple-dark: #4434d4;
+      --purple-soft: #b9b9f9;
+      --dark: #1c1e54;
+      --ruby: #ea2261;
+      --magenta: #f96bee;
+      --green: #15be53;
+      --shadow: rgba(50,50,93,0.25) 0px 30px 45px -30px, rgba(0,0,0,0.1) 0px 18px 36px -18px;
+      --soft-shadow: rgba(23,23,23,0.08) 0px 15px 35px 0px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: 'Source Sans 3', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      font-feature-settings: "ss01";
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .shell {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(229,237,245,0.8);
+    }
+
+    .nav-inner {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: -0.2px;
+      font-size: 19px;
+    }
+
+    .mark {
+      width: 31px;
+      height: 31px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--purple), var(--ruby) 58%, var(--magenta));
+      position: relative;
+      box-shadow: rgba(83,58,253,0.26) 0 14px 24px -14px;
+    }
+
+    .mark::after {
+      content: "";
+      position: absolute;
+      inset: 8px 9px 7px;
+      border-left: 2px solid white;
+      border-top: 2px solid white;
+      transform: skew(-12deg);
+      opacity: 0.92;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      color: var(--label);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .nav-links a:hover { color: var(--purple); }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      border-radius: 4px;
+      padding: 9px 16px;
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 400;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .button:hover { transform: translateY(-1px); }
+    .button:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
+
+    .button.primary {
+      background: var(--purple);
+      color: white;
+      box-shadow: rgba(83,58,253,0.28) 0 16px 30px -18px;
+    }
+
+    .button.primary:hover { background: var(--purple-dark); }
+
+    .button.ghost {
+      color: var(--purple);
+      border-color: var(--purple-soft);
+      background: rgba(83,58,253,0.02);
+    }
+
+    .button.ghost:hover { background: rgba(83,58,253,0.06); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 92px 0 70px;
+      isolation: isolate;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: -140px;
+      right: -120px;
+      width: 580px;
+      height: 580px;
+      background: radial-gradient(circle at 35% 35%, rgba(249,107,238,0.22), transparent 36%), radial-gradient(circle at 58% 48%, rgba(83,58,253,0.22), transparent 45%);
+      filter: blur(2px);
+      z-index: -1;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
+      gap: 62px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--purple);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      margin-bottom: 18px;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 0 6px rgba(21,190,83,0.12);
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      font-size: clamp(44px, 6vw, 70px);
+      line-height: 0.98;
+      letter-spacing: -1.6px;
+      font-weight: 300;
+      color: var(--ink);
+      margin-bottom: 24px;
+      max-width: 760px;
+      text-wrap: pretty;
+    }
+
+    .hero-copy {
+      font-size: 20px;
+      line-height: 1.45;
+      color: var(--text);
+      font-weight: 300;
+      max-width: 610px;
+      margin-bottom: 30px;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 34px;
+    }
+
+    .trust-row {
+      display: flex;
+      gap: 22px;
+      flex-wrap: wrap;
+      color: var(--label);
+      font-size: 14px;
+    }
+
+    .trust-row span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .trust-row span::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 2px;
+      background: var(--purple);
+      opacity: 0.7;
+    }
+
+    .dashboard {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform: perspective(1200px) rotateY(-5deg) rotateX(3deg);
+    }
+
+    .dash-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #fbfdff);
+    }
+
+    .dots { display: flex; gap: 6px; }
+    .dots i { width: 9px; height: 9px; border-radius: 50%; background: #d9e3ef; display: block; }
+    .dots i:nth-child(1) { background: #ea2261; }
+    .dots i:nth-child(2) { background: #f1b84b; }
+    .dots i:nth-child(3) { background: #15be53; }
+
+    .dash-title {
+      font-family: 'Source Code Pro', monospace;
+      color: var(--label);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .dash-body { padding: 18px; }
+
+    .status-card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: #fff;
+    }
+
+    .status-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .status-head strong {
+      font-size: 18px;
+      font-weight: 400;
+      letter-spacing: -0.2px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 400;
+      border: 1px solid rgba(21,190,83,0.35);
+      color: #108c3d;
+      background: rgba(21,190,83,0.14);
+      white-space: nowrap;
+    }
+
+    .agent-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .agent-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      background: var(--muted);
+      border-radius: 5px;
+      color: var(--label);
+      font-size: 14px;
+    }
+
+    .agent-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, rgba(83,58,253,0.14), rgba(249,107,238,0.18));
+      display: grid;
+      place-items: center;
+      color: var(--purple);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .progress {
+      width: 72px;
+      height: 5px;
+      border-radius: 999px;
+      background: #e3e9f2;
+      overflow: hidden;
+    }
+
+    .progress b {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--purple), var(--magenta));
+    }
+
+    .plan-card {
+      background: var(--dark);
+      color: white;
+      border-radius: 6px;
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .plan-card::after {
+      content: "";
+      position: absolute;
+      width: 160px;
+      height: 160px;
+      right: -70px;
+      bottom: -80px;
+      background: radial-gradient(circle, rgba(249,107,238,0.36), transparent 68%);
+    }
+
+    .plan-card small {
+      color: rgba(255,255,255,0.62);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 11px;
+    }
+
+    .plan-card h3 {
+      font-size: 26px;
+      font-weight: 300;
+      letter-spacing: -0.26px;
+      margin: 8px 0 10px;
+    }
+
+    .plan-card p { color: rgba(255,255,255,0.70); margin: 0; line-height: 1.45; }
+
+    section { padding: 86px 0; }
+
+    .section-head {
+      max-width: 690px;
+      margin-bottom: 42px;
+    }
+
+    .section-head.center {
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: clamp(34px, 4.5vw, 50px);
+      line-height: 1.05;
+      letter-spacing: -1px;
+      font-weight: 300;
+      color: var(--ink);
+      margin-bottom: 16px;
+      text-wrap: pretty;
+    }
+
+    .section-head p {
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.45;
+      font-weight: 300;
+      margin-bottom: 0;
+    }
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .problem {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 22px;
+      min-height: 174px;
+      background: white;
+    }
+
+    .problem .num {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      color: var(--purple);
+      margin-bottom: 34px;
+      display: block;
+    }
+
+    .problem h3, .feature h3, .audience h3 {
+      font-size: 23px;
+      line-height: 1.12;
+      font-weight: 300;
+      letter-spacing: -0.24px;
+      margin-bottom: 10px;
+    }
+
+    .problem p, .feature p, .audience p {
+      color: var(--text);
+      line-height: 1.43;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    .dark-section {
+      background: var(--dark);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dark-section::before {
+      content: "";
+      position: absolute;
+      inset: auto -160px -260px auto;
+      width: 540px;
+      height: 540px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(83,58,253,0.5), transparent 62%);
+      opacity: 0.5;
+    }
+
+    .dark-section h2 { color: white; }
+    .dark-section .section-head p { color: rgba(255,255,255,0.68); }
+
+    .agents {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      position: relative;
+    }
+
+    .agent {
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.07);
+      padding: 19px;
+      min-height: 220px;
+    }
+
+    .agent code {
+      display: inline-flex;
+      font-family: 'Source Code Pro', monospace;
+      color: #ffd7ef;
+      font-size: 12px;
+      margin-bottom: 30px;
+    }
+
+    .agent h3 {
+      font-size: 21px;
+      line-height: 1.12;
+      font-weight: 300;
+      letter-spacing: -0.2px;
+      margin-bottom: 10px;
+      color: white;
+    }
+
+    .agent p {
+      color: rgba(255,255,255,0.66);
+      line-height: 1.45;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 24px;
+      background: #fff;
+      box-shadow: rgba(23,23,23,0.04) 0 10px 24px;
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 5px;
+      background: rgba(83,58,253,0.08);
+      color: var(--purple);
+      display: grid;
+      place-items: center;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 28px;
+    }
+
+    .engine-section {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border-top: 1px solid rgba(229,237,245,0.7);
+      border-bottom: 1px solid rgba(229,237,245,0.7);
+    }
+
+    .engine-grid {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 46px;
+      align-items: center;
+    }
+
+    .engine-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 26px;
+    }
+
+    .engine-panel h3 {
+      font-size: 30px;
+      font-weight: 300;
+      letter-spacing: -0.46px;
+      margin-bottom: 12px;
+    }
+
+    .engine-panel p {
+      color: var(--text);
+      line-height: 1.45;
+      font-weight: 300;
+      margin-bottom: 22px;
+    }
+
+    .engine-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      background: var(--muted);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--ink);
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 300;
+      letter-spacing: -0.22px;
+      margin-bottom: 7px;
+      font-feature-settings: "tnum";
+    }
+
+    .metric span {
+      display: block;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .pipeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pipeline-step {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 14px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 17px;
+      box-shadow: rgba(23,23,23,0.035) 0 8px 20px;
+    }
+
+    .pipeline-step span {
+      width: 42px;
+      height: 42px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      background: var(--dark);
+      color: white;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+    }
+
+    .pipeline-step h3 {
+      font-size: 21px;
+      font-weight: 300;
+      letter-spacing: -0.2px;
+      margin-bottom: 5px;
+    }
+
+    .pipeline-step p {
+      color: var(--text);
+      line-height: 1.4;
+      font-weight: 300;
+      margin: 0;
+    }
+
+
+    .mega-section {
+      background: #fff;
+    }
+
+    .mega-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .mega-card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 20px;
+      background: #fff;
+      min-height: 180px;
+      box-shadow: rgba(23,23,23,0.035) 0 8px 20px;
+    }
+
+    .mega-card b {
+      display: inline-flex;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      color: var(--purple);
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+
+    .mega-card h3 {
+      font-size: 22px;
+      line-height: 1.12;
+      font-weight: 300;
+      letter-spacing: -0.22px;
+      margin-bottom: 8px;
+    }
+
+    .mega-card p {
+      color: var(--text);
+      line-height: 1.4;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    .os-board {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .os-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 1fr;
+      border-top: 1px solid var(--line);
+    }
+
+    .os-row:first-child { border-top: 0; }
+
+    .os-cell {
+      padding: 17px;
+      border-left: 1px solid var(--line);
+      color: var(--text);
+      line-height: 1.38;
+      font-weight: 300;
+    }
+
+    .os-cell:first-child {
+      border-left: 0;
+      color: var(--ink);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--muted);
+    }
+
+    .jobs-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .job-chip {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 9px 12px;
+      background: #fff;
+      color: var(--label);
+      font-size: 14px;
+      box-shadow: rgba(23,23,23,0.03) 0 6px 16px;
+    }
+
+    .radar-section {
+      background: var(--dark);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .radar-section h2 { color: white; }
+    .radar-section .section-head p { color: rgba(255,255,255,0.68); }
+
+    .radar-grid {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .radar-panel, .source-card {
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.07);
+      padding: 22px;
+    }
+
+    .radar-panel h3, .source-card h3 {
+      color: white;
+      font-size: 25px;
+      font-weight: 300;
+      letter-spacing: -0.26px;
+      margin-bottom: 10px;
+    }
+
+    .radar-panel p, .source-card p {
+      color: rgba(255,255,255,0.68);
+      line-height: 1.45;
+      font-weight: 300;
+      margin: 0;
+    }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .source-card code {
+      display: inline-flex;
+      color: #ffd7ef;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .app-card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 22px;
+      background: #fff;
+      min-height: 205px;
+    }
+
+    .app-card h3 {
+      font-size: 23px;
+      font-weight: 300;
+      letter-spacing: -0.22px;
+      margin-bottom: 8px;
+    }
+
+    .app-card p {
+      color: var(--text);
+      line-height: 1.42;
+      font-weight: 300;
+      margin: 0 0 14px;
+    }
+
+    .app-card small {
+      color: var(--purple);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 11px;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 54px;
+      align-items: start;
+    }
+
+    .workflow-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      background: white;
+      position: sticky;
+      top: 104px;
+    }
+
+    .workflow-card h3 {
+      font-size: 30px;
+      font-weight: 300;
+      letter-spacing: -0.46px;
+      margin-bottom: 12px;
+    }
+
+    .workflow-card p { color: var(--text); line-height: 1.45; font-weight: 300; }
+
+    .brief-box {
+      margin-top: 24px;
+      border: 1px dashed #362baa;
+      border-radius: 6px;
+      padding: 16px;
+      background: #fbfbff;
+      color: var(--label);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .steps { display: grid; gap: 13px; }
+
+    .step {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 16px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .step-number {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 13px;
+    }
+
+    .step h3 {
+      font-size: 22px;
+      font-weight: 300;
+      letter-spacing: -0.22px;
+      margin-bottom: 7px;
+    }
+
+    .step p {
+      color: var(--text);
+      line-height: 1.43;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    .audiences {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .audience {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 22px;
+      min-height: 190px;
+    }
+
+    .audience b {
+      display: inline-flex;
+      margin-bottom: 30px;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      color: var(--purple);
+      font-weight: 500;
+    }
+
+    .cta {
+      padding: 88px 0;
+      background: linear-gradient(135deg, #f8fbff, #ffffff 48%, #fbf8ff);
+    }
+
+    .cta-panel {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 36px;
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 34px;
+      align-items: start;
+    }
+
+    .cta-panel h2 { margin-bottom: 14px; }
+    .cta-panel p { color: var(--text); line-height: 1.45; font-size: 18px; font-weight: 300; }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--label);
+      font-weight: 400;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 12px 12px;
+      font: inherit;
+      color: var(--ink);
+      background: white;
+      min-height: 44px;
+    }
+
+    textarea { min-height: 112px; resize: vertical; }
+    .full { grid-column: 1 / -1; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid rgba(83,58,253,0.22); border-color: var(--purple); }
+
+    .form-note {
+      grid-column: 1 / -1;
+      color: var(--text);
+      font-size: 13px;
+      margin: 2px 0 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 30px 0;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid, .workflow, .engine-grid, .radar-grid, .cta-panel { grid-template-columns: 1fr; }
+      .dashboard { transform: none; }
+      .problem-grid, .audiences, .mega-grid, .app-grid, .source-list { grid-template-columns: repeat(2, 1fr); }
+      .agents { grid-template-columns: repeat(2, 1fr); }
+      .features { grid-template-columns: repeat(2, 1fr); }
+      .workflow-card { position: static; }
+      .nav-links a:not(.button) { display: none; }
+    }
+
+    @media (max-width: 640px) {
+      .shell { width: min(100% - 28px, 1120px); }
+      .hero { padding: 62px 0 42px; }
+      section { padding: 58px 0; }
+      .problem-grid, .agents, .features, .audiences, .mega-grid, .app-grid, .source-list, .engine-metrics, form { grid-template-columns: 1fr; }
+      .os-row { grid-template-columns: 1fr; }
+      .os-cell { border-left: 0; border-top: 1px solid var(--line); }
+      .os-cell:first-child { border-top: 0; }
+      .nav-inner { height: 64px; }
+      .button { width: 100%; }
+      .hero-actions { align-items: stretch; }
+      .nav-links .button { width: auto; }
+      h1 { font-size: 42px; letter-spacing: -0.9px; }
+      .cta-panel { padding: 22px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav" aria-label="Primary navigation">
+    <div class="shell nav-inner">
+      <a href="#top" class="brand" aria-label="ArchAgent home"><span class="mark"></span> ArchAgent</a>
+      <div class="nav-links">
+        <a href="#pipeline">Pipeline</a>
+        <a href="#jobs">Jobs</a>
+        <a href="#eu-radar">EU Radar</a>
+        <a href="#agents">Agents</a>
+        <a href="app.html">BuildingOS app</a>
+        <a href="#waitlist" class="button primary">Request demo</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <header class="hero">
+      <div class="shell hero-grid">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> AI operating system for building work</div>
+          <h1>One agentic platform for architecture, renovation, energy upgrades, and every building job.</h1>
+          <p class="hero-copy">ArchAgent helps property owners, architects, contractors, painters, energy experts, and building companies discover opportunities, audit buildings, design solutions, choose materials, match local experts, manage execution, inspect work, and generate proposals from one intelligent workflow.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="app.html">Open BuildingOS app</a>
+            <a class="button ghost" href="#waitlist">Start a project</a>
+            <a class="button ghost" href="#workflow">See how it works</a>
+          </div>
+          <div class="trust-row" aria-label="Platform capabilities">
+            <span>Project discovery</span>
+            <span>Design + materials</span>
+            <span>Expert matching</span>
+            <span>Proposal automation</span>
+          </div>
+        </div>
+
+        <div class="dashboard" aria-label="ArchAgent product dashboard preview">
+          <div class="dash-top">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="dash-title">PROJECT: EU BUILDING WORK / AUTO-SOURCED</div>
+          </div>
+          <div class="dash-body">
+            <div class="status-card">
+              <div class="status-head">
+                <strong>Full building project plan generated</strong>
+                <span class="badge">Ready for review</span>
+              </div>
+              <div class="agent-list">
+                <div class="agent-row"><span class="agent-icon">PD</span><span>Building Audit Agent</span><span class="progress"><b style="width:92%"></b></span></div>
+                <div class="agent-row"><span class="agent-icon">DA</span><span>Thermal Design Agent</span><span class="progress"><b style="width:76%"></b></span></div>
+                <div class="agent-row"><span class="agent-icon">TM</span><span>Contractor Matching Agent</span><span class="progress"><b style="width:64%"></b></span></div>
+                <div class="agent-row"><span class="agent-icon">PR</span><span>Proposal Agent</span><span class="progress"><b style="width:48%"></b></span></div>
+              </div>
+            </div>
+            <div class="plan-card">
+              <small>BUILDING PACKAGE</small>
+              <h3>Scope + experts + materials + proposal</h3>
+              <p>Client-ready scope covering architecture, renovation, painting, energy upgrades, material options, required experts, and next actions.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section>
+      <div class="shell">
+        <div class="section-head">
+          <h2>Renovation and energy upgrades are too hard to plan.</h2>
+          <p>Owners want lower energy bills and better comfort, but retrofit planning is fragmented across manual inspections, material research, contractor calls, and unclear payback calculations.</p>
+        </div>
+        <div class="problem-grid">
+          <article class="problem"><span class="num">01</span><h3>Energy problems are invisible</h3><p>Heat loss, air leakage, poor insulation, and inefficient systems are hard for owners to understand without a structured audit.</p></article>
+          <article class="problem"><span class="num">02</span><h3>Materials are confusing</h3><p>Clients need help choosing insulation, windows, HVAC options, coatings, and thermal materials based on climate and budget.</p></article>
+          <article class="problem"><span class="num">03</span><h3>Hiring is unreliable</h3><p>Finding trusted retrofit workers, insulation installers, HVAC technicians, and renovation contractors takes too many disconnected steps.</p></article>
+          <article class="problem"><span class="num">04</span><h3>Savings are unclear</h3><p>Budgets, timelines, energy impact, material choices, and payback assumptions are recreated manually for every renovation lead.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="dark-section" id="agents">
+      <div class="shell">
+        <div class="section-head center">
+          <h2>Core agents for the first building workflow.</h2>
+          <p>ArchAgent starts with focused agents for audit, materials, contractor matching, and proposals — then expands into a full BuildingOS for design, execution, inspection, and handover.</p>
+        </div>
+        <div class="agents">
+          <article class="agent"><code>agent.audit</code><h3>Building Audit</h3><p>Collects building details, climate context, photos, bills, symptoms, and owner goals to identify likely efficiency problems.</p></article>
+          <article class="agent"><code>agent.thermal</code><h3>Thermal Analysis</h3><p>Turns messy owner input into thermal priorities: insulation, glazing, air sealing, HVAC, shading, and moisture risks.</p></article>
+          <article class="agent"><code>agent.materials</code><h3>Material Selection</h3><p>Recommends renovation materials such as insulation systems, thermal panels, windows, membranes, coatings, and finishes.</p></article>
+          <article class="agent"><code>agent.contractors</code><h3>Talent Matching</h3><p>Matches installers, contractors, energy auditors, HVAC technicians, and renovation crews based on scope and location.</p></article>
+          <article class="agent"><code>agent.proposal</code><h3>Proposal Drafting</h3><p>Creates client-ready retrofit scope, budget range, estimated savings, timeline, milestones, and next-step documents.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell">
+        <div class="section-head">
+          <h2>Designed for the bridge between project idea and execution.</h2>
+          <p>ArchAgent turns messy building requests into structured briefs, material options, expert requirements, quote packages, documents, and execution plans that teams can act on.</p>
+        </div>
+        <div class="features">
+          <article class="feature"><span class="feature-icon">01</span><h3>AI renovation intake</h3><p>Collects building type, photos, bills, comfort problems, location, budget range, material preferences, and urgency.</p></article>
+          <article class="feature"><span class="feature-icon">02</span><h3>Structured retrofit brief</h3><p>Converts the intake into a professional retrofit brief that auditors, contractors, and installers can act on.</p></article>
+          <article class="feature"><span class="feature-icon">03</span><h3>Energy optimization package</h3><p>Suggests insulation upgrades, window improvements, HVAC options, air sealing, shading, and material packages.</p></article>
+          <article class="feature"><span class="feature-icon">04</span><h3>Worker and contractor matching</h3><p>Identifies the required trades and recommends suitable workers, contractors, auditors, and technicians by project type and location.</p></article>
+          <article class="feature"><span class="feature-icon">05</span><h3>Proposal automation</h3><p>Drafts scope, deliverables, phases, timeline, assumptions, estimated budget ranges, and expected energy impact.</p></article>
+          <article class="feature"><span class="feature-icon">06</span><h3>Expert review layer</h3><p>Keeps qualified professionals in control while agents accelerate audits, recommendations, and proposal preparation.</p></article>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="mega-section" id="pipeline">
+      <div class="shell">
+        <div class="section-head center">
+          <h2>One workflow for the entire building project lifecycle.</h2>
+          <p>ArchAgent is the blueprint for a BuildingOS: every step from discovering opportunities to designing, quoting, staffing, executing, inspecting, and handing over the work.</p>
+        </div>
+        <div class="os-board" aria-label="Full architecture and building pipeline">
+          <div class="os-row"><div class="os-cell">01 / DISCOVER</div><div class="os-cell">Find projects from EU tenders, permits, real estate, property managers, renovation requests, energy grants, and local demand.</div><div class="os-cell">Output: qualified project lead with location, budget, deadline, owner type, and required trades.</div></div>
+          <div class="os-row"><div class="os-cell">02 / AUDIT</div><div class="os-cell">Collect photos, floor plans, bills, building age, symptoms, area, climate, and existing materials.</div><div class="os-cell">Output: building health score, risks, missing data, and priority problems.</div></div>
+          <div class="os-row"><div class="os-cell">03 / DESIGN</div><div class="os-cell">Generate architecture concepts, renovation plans, facade ideas, interior options, before/after previews, and compliance checklist.</div><div class="os-cell">Output: design direction, drawings checklist, material palette, and project scope.</div></div>
+          <div class="os-row"><div class="os-cell">04 / MATERIALS</div><div class="os-cell">Recommend insulation, windows, paint, flooring, tiles, roofing, waterproofing, HVAC, solar, smart home, and safety materials.</div><div class="os-cell">Output: material options ranked by cost, durability, energy impact, supplier availability, and installation difficulty.</div></div>
+          <div class="os-row"><div class="os-cell">05 / MATCH</div><div class="os-cell">Match architects, engineers, painters, electricians, plumbers, HVAC experts, insulation installers, roofers, facade crews, and contractors.</div><div class="os-cell">Output: local expert shortlist, quote requests, schedules, portfolios, and risk score.</div></div>
+          <div class="os-row"><div class="os-cell">06 / PROPOSE</div><div class="os-cell">Generate scope of work, quote comparison, budget range, timeline, milestones, warranty assumptions, and payment schedule.</div><div class="os-cell">Output: client-ready proposal or contractor-ready bid package.</div></div>
+          <div class="os-row"><div class="os-cell">07 / EXECUTE</div><div class="os-cell">Coordinate calendar, tasks, materials, workers, site photos, client approvals, invoices, change orders, and milestone payments.</div><div class="os-cell">Output: live project dashboard for owner, expert, and admin.</div></div>
+          <div class="os-row"><div class="os-cell">08 / INSPECT</div><div class="os-cell">Use AI photo checks and human review for paint coverage, insulation installation, facade quality, site cleanliness, and before/after proof.</div><div class="os-cell">Output: inspection report, punch list, final approval, and maintenance reminders.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="jobs">
+      <div class="shell">
+        <div class="section-head">
+          <h2>Every job around a building can become an agentic application.</h2>
+          <p>The platform should support small jobs like painting and maintenance, technical jobs like energy retrofit and HVAC, and large jobs like architecture design, tenders, and full renovation.</p>
+        </div>
+        <div class="jobs-cloud" aria-label="Building job categories">
+          <span class="job-chip">Architecture concept</span><span class="job-chip">Renovation planning</span><span class="job-chip">Energy retrofit</span><span class="job-chip">Insulation</span><span class="job-chip">Interior painting</span><span class="job-chip">Facade painting</span><span class="job-chip">Roofing</span><span class="job-chip">Windows & doors</span><span class="job-chip">HVAC</span><span class="job-chip">Electrical</span><span class="job-chip">Plumbing</span><span class="job-chip">Flooring</span><span class="job-chip">Tiles</span><span class="job-chip">Kitchen renovation</span><span class="job-chip">Bathroom renovation</span><span class="job-chip">Solar panels</span><span class="job-chip">Smart home</span><span class="job-chip">Waterproofing</span><span class="job-chip">Facade repair</span><span class="job-chip">Building maintenance</span><span class="job-chip">Site inspection</span><span class="job-chip">Cost estimation</span><span class="job-chip">Permit checklist</span><span class="job-chip">Supplier matching</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="mega-section" id="applications">
+      <div class="shell">
+        <div class="section-head center">
+          <h2>Practical agentic applications for building projects.</h2>
+          <p>Each application solves a real job in the building workflow: discovery, scoping, design, materials, matching, quoting, execution, and inspection.</p>
+        </div>
+        <div class="app-grid">
+          <article class="app-card"><small>APP 01</small><h3>Project Discovery Radar</h3><p>Finds renovation, construction, painting, energy, maintenance, and tender opportunities across selected regions.</p></article>
+          <article class="app-card"><small>APP 02</small><h3>Building Health Report</h3><p>Turns photos, bills, and owner complaints into a score for energy, comfort, safety, maintenance, and cost risk.</p></article>
+          <article class="app-card"><small>APP 03</small><h3>Scope Builder</h3><p>Asks the right questions, defines required trades, creates a work breakdown, and removes ambiguity before quoting.</p></article>
+          <article class="app-card"><small>APP 04</small><h3>Before/After Visualizer</h3><p>Previews facade paint, interior finishes, flooring, lighting, windows, and renovation styles before work starts.</p></article>
+          <article class="app-card"><small>APP 05</small><h3>Material Intelligence</h3><p>Ranks insulation, paint, windows, HVAC, solar, tiles, and finishes by cost, performance, durability, and supplier options.</p></article>
+          <article class="app-card"><small>APP 06</small><h3>Expert Finder</h3><p>Matches each job to local architects, auditors, painters, contractors, engineers, installers, and technicians.</p></article>
+          <article class="app-card"><small>APP 07</small><h3>Quote Comparison</h3><p>Compares price, timeline, included materials, warranty, reviews, distance, availability, and quote risk.</p></article>
+          <article class="app-card"><small>APP 08</small><h3>Contractor Quote Assistant</h3><p>Helps workers generate professional proposals, material lists, schedules, invoices, and payment milestones faster.</p></article>
+          <article class="app-card"><small>APP 09</small><h3>Site Inspector</h3><p>Checks uploaded work photos for progress, visible defects, paint coverage, installed materials, cleanliness, and handover proof.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="radar-section" id="eu-radar">
+      <div class="shell">
+        <div class="section-head center">
+          <h2>EU Project Discovery Radar.</h2>
+          <p>The pipeline starts before a client submits a form. ArchAgent can become a sourcing engine for European building opportunities: public tenders, renovation grants, energy retrofit programs, permits, real estate signals, and local maintenance requests.</p>
+        </div>
+        <div class="radar-grid">
+          <div class="radar-panel">
+            <h3>What the agents should find</h3>
+            <p>Renovation projects, energy-efficiency upgrades, public building retrofits, facade repairs, painting contracts, housing maintenance, solar/HVAC upgrades, insulation jobs, architecture tenders, and contractor subcontracting opportunities.</p>
+          </div>
+          <div class="source-list">
+            <article class="source-card"><code>source.ted</code><h3>EU tenders</h3><p>Monitor TED, EU Funding & Tenders, and national procurement portals for construction, renovation, public buildings, energy retrofit, engineering, and facility contracts.</p></article>
+            <article class="source-card"><code>source.permits</code><h3>Permits & planning</h3><p>Track city planning portals, building permits, renovation approvals, public development notices, and neighborhood-level project signals.</p></article>
+            <article class="source-card"><code>source.property</code><h3>Property signals</h3><p>Scan real estate listings, old building stock, landlord portfolios, property managers, hotels, shops, offices, and buildings needing upgrades.</p></article>
+            <article class="source-card"><code>source.energy</code><h3>Energy programs</h3><p>Find subsidy/grant opportunities, EPC-driven upgrades, heat pump programs, insulation incentives, solar incentives, and public retrofit campaigns.</p></article>
+            <article class="source-card"><code>source.local</code><h3>Local job demand</h3><p>Capture painting, repair, plumbing, electrical, HVAC, roofing, facade, and maintenance requests from local owners and property managers.</p></article>
+            <article class="source-card"><code>source.market</code><h3>Private market signals</h3><p>Detect trigger events such as property sale, rental refresh, old EPC rating, tenant complaints, weather damage, vacancy, and portfolio upgrades.</p></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="engine-section" id="engine">
+      <div class="shell engine-grid">
+        <div class="engine-panel">
+          <div class="eyebrow"><span class="pulse"></span> Energy Optimization Engine</div>
+          <h3>Automate the path from building data to retrofit decision.</h3>
+          <p>The engine combines owner intake, utility bills, photos, climate context, material rules, and contractor availability into a practical renovation plan that can be reviewed by a human expert.</p>
+          <div class="engine-metrics" aria-label="Engine outputs">
+            <div class="metric"><b>01</b><span>Building data captured</span></div>
+            <div class="metric"><b>02</b><span>Thermal priorities ranked</span></div>
+            <div class="metric"><b>03</b><span>Proposal ready for review</span></div>
+          </div>
+        </div>
+        <div class="pipeline">
+          <article class="pipeline-step"><span>01</span><div><h3>Collect building data</h3><p>Guided forms gather property age, area, walls, windows, roof, HVAC, bills, photos, location, comfort issues, and budget.</p></div></article>
+          <article class="pipeline-step"><span>02</span><div><h3>Analyze heat loss and comfort issues</h3><p>Agents identify likely causes such as weak insulation, thermal bridges, air leakage, solar gain, outdated HVAC, or moisture risk.</p></div></article>
+          <article class="pipeline-step"><span>03</span><div><h3>Recommend materials and actions</h3><p>The platform proposes insulation systems, thermal panels, windows, membranes, coatings, shading, HVAC improvements, and sequencing.</p></div></article>
+          <article class="pipeline-step"><span>04</span><div><h3>Estimate cost, savings, and payback</h3><p>Each option is packaged with rough budget ranges, expected energy impact, comfort improvement, complexity, and assumptions.</p></div></article>
+          <article class="pipeline-step"><span>05</span><div><h3>Match workers and generate proposal</h3><p>ArchAgent matches required trades, creates a scope of work, and drafts a client-ready retrofit proposal for expert approval.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow">
+      <div class="shell workflow">
+        <div class="workflow-card">
+          <div class="eyebrow"><span class="pulse"></span> Example project</div>
+          <h3>“My house is cold in winter, hot in summer, and energy bills are too high.”</h3>
+          <p>ArchAgent turns a simple complaint into a practical retrofit package: likely causes, recommended materials, required workers, timeline assumptions, and proposal draft.</p>
+          <div class="brief-box">
+            project.type: residential energy retrofit<br />
+            building.area: 120m²<br />
+            symptoms: heat loss / high bills<br />
+            focus: insulation / air sealing / windows<br />
+            needed.roles: energy auditor, insulation installer, HVAC technician<br />
+            output: audit brief + materials + retrofit proposal
+          </div>
+        </div>
+        <div class="steps">
+          <article class="step"><span class="step-number">01</span><div><h3>Owner describes the building</h3><p>A guided intake captures property type, age, area, bills, comfort problems, photos, location, budget, and constraints.</p></div></article>
+          <article class="step"><span class="step-number">02</span><div><h3>Agents build the retrofit brief</h3><p>The platform structures symptoms, likely causes, open questions, risk areas, recommended checks, and required specialists.</p></div></article>
+          <article class="step"><span class="step-number">03</span><div><h3>Optimization options are generated</h3><p>Material packages, insulation strategies, window/HVAC options, and estimated impact ranges are prepared.</p></div></article>
+          <article class="step"><span class="step-number">04</span><div><h3>The right workers are matched</h3><p>Architects and experts, installers, contractors, HVAC technicians, and renovation workers are suggested based on the retrofit scope.</p></div></article>
+          <article class="step"><span class="step-number">05</span><div><h3>Retrofit proposal is ready for review</h3><p>A human expert reviews the scope, material choices, energy assumptions, timeline, and cost assumptions before sending.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="customers">
+      <div class="shell">
+        <div class="section-head center">
+          <h2>Built for the full architecture, renovation, and building jobs market.</h2>
+          <p>ArchAgent can start as a lead-generation and project-brief platform, then grow into a managed marketplace for architecture, renovation, energy upgrades, materials, workers, suppliers, and building execution.</p>
+        </div>
+        <div class="audiences">
+          <article class="audience"><b>CLIENTS</b><h3>Owners and landlords</h3><p>Turn building problems, renovation ideas, maintenance needs, and energy bills into a clear project plan before hiring a team.</p></article>
+          <article class="audience"><b>STUDIOS</b><h3>Architects and experts</h3><p>Receive qualified briefs for architecture, renovation, energy, painting, maintenance, and technical building jobs.</p></article>
+          <article class="audience"><b>BUILDERS</b><h3>Workers and contractors</h3><p>Get matched to nearby jobs for painting, insulation, HVAC, windows, plumbing, electrical, roofing, renovation, and maintenance.</p></article>
+          <article class="audience"><b>DEVELOPERS</b><h3>Property portfolios</h3><p>Evaluate renovation needs, energy upgrades, budgets, contractor capacity, maintenance risk, and project priorities across multiple properties.</p></article>
+        </div>
+      </div>
+    </section>
+
+
+    <section id="money">
+      <div class="shell cta-panel">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> Revenue model</div>
+          <h2>Start selling before the full platform is built.</h2>
+          <p>ArchAgent can make money immediately with three offers: paid lead radar subscriptions, fixed-price bid/proposal packages, and contractor matching or managed execution fees.</p>
+        </div>
+        <div class="steps">
+          <article class="step"><span class="step-number">€149</span><div><h3>Lead Radar subscription</h3><p>Weekly active tender list by country and trade for architecture, construction, painting, energy, and renovation companies.</p></div></article>
+          <article class="step"><span class="step-number">€750</span><div><h3>Bid package</h3><p>Convert one opportunity into a scope summary, compliance checklist, required trades, outreach email, and proposal draft.</p></div></article>
+          <article class="step"><span class="step-number">5%</span><div><h3>Managed matching</h3><p>Match contractors, workers, experts, and suppliers to projects, then charge a success or management fee.</p></div></article>
+          <a class="button primary" href="app.html">Open the BuildingOS app</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" id="waitlist">
+      <div class="shell cta-panel">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> Early access</div>
+          <h2>Join the first ArchAgent building project pilot.</h2>
+          <p>Use this form as the website’s first lead-capture MVP for architecture, renovation, energy, painting, maintenance, and building jobs. The BuildingOS app already contains real active project leads; connect this form to email, Airtable, Notion, Stripe, or a backend database when ready.</p>
+        </div>
+        <form onsubmit="event.preventDefault(); document.querySelector('#formStatus').textContent='Thanks — your demo request is ready to be connected to a backend.';">
+          <label>Name<input required name="name" placeholder="Your name" /></label>
+          <label>Email<input required type="email" name="email" placeholder="you@example.com" /></label>
+          <label>Role<select name="role"><option>Homeowner / property owner</option><option>Energy auditor / consultant</option><option>Installer / contractor / worker</option><option>Developer / property portfolio</option></select></label>
+          <label>Location<input name="location" placeholder="City, country" /></label>
+          <label>Project type<select name="type"><option>Full renovation</option><option>Architecture / design</option><option>Painting / finishing</option><option>Energy retrofit</option><option>Insulation upgrade</option><option>Window / facade improvement</option><option>HVAC optimization</option><option>Electrical / plumbing</option><option>Roofing / facade repair</option><option>Maintenance</option></select></label>
+          <label>Budget range<input name="budget" placeholder="$50k–$250k" /></label>
+          <label class="full">Project description<textarea name="description" placeholder="Tell us about the building, job type, location, photos/plans available, budget, deadline, and what experts or workers you need."></textarea></label>
+          <button class="button primary full" type="submit">Request demo</button>
+          <p class="form-note" id="formStatus">We will review your request and prepare the right project or expert workflow.</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner">
+      <span>© 2026 ArchAgent. Revenue-ready startup portal.</span>
+      <span>Building intelligence for project discovery, architecture, renovation, energy upgrades, painting, maintenance, experts, materials, and proposals.</span>
+    </div>
+  </footer>
+</body>
+</html>
