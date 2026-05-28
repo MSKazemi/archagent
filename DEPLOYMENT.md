@@ -22,7 +22,7 @@ Paste the generated token into `.env`.
 ```bash
 cd /opt/archagent
 set -a; . ./.env; set +a
-python3 archagent_server.py --port 8091
+python3 archagent_server.py --host 127.0.0.1 --port 8091
 ```
 
 Open:
@@ -33,7 +33,20 @@ http://127.0.0.1:8091/app
 
 The browser app will ask for the API token and stores it in localStorage.
 
-## 3. Install systemd service
+## 3. Docker Compose option
+
+```bash
+cd /opt/archagent
+cp .env.example .env
+# edit .env and set ARCHAGENT_TOKEN, or export ARCHAGENT_TOKEN in the shell
+export ARCHAGENT_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')
+docker compose up --build -d
+docker compose ps
+```
+
+The container binds `0.0.0.0:8091` internally and exposes `8091:8091`. SQLite databases, exports, and backups are bind-mounted from the project directory.
+
+## 4. Install systemd service
 
 ```bash
 sudo cp deploy/archagent.service /etc/systemd/system/archagent.service
@@ -42,7 +55,7 @@ sudo systemctl enable --now archagent.service
 sudo systemctl status archagent.service
 ```
 
-## 4. Install daily Italy refresh timer
+## 5. Install daily Italy refresh timer
 
 Daily timer uses a fast refresh: backup, TED/profile/report refresh, top-5 dossier generation, and regression test. Weekly worker/OSM refresh should be run manually or via a second timer because Overpass can rate-limit.
 
@@ -61,7 +74,7 @@ python3 archagent_production_refresh.py --skip-workers --dossiers 5
 python3 archagent_production_refresh.py --dossiers 5   # includes OSM worker refresh
 ```
 
-## 5. Backups
+## 6. Backups
 
 Manual backup:
 
@@ -75,7 +88,16 @@ Backups are written to:
 /opt/archagent/backups
 ```
 
-## 6. HTTPS reverse proxy
+## 7. SQLite maintenance
+
+```bash
+python3 archagent_maintenance.py
+python3 archagent_maintenance.py --vacuum
+```
+
+The first command runs `PRAGMA integrity_check` and `PRAGMA optimize`. Use `--vacuum` during maintenance windows after backing up.
+
+## 8. HTTPS reverse proxy
 
 Example Caddy config:
 
@@ -88,15 +110,17 @@ archagent.example.com {
 
 Keep `ARCHAGENT_TOKEN` enabled. Do not expose the app publicly without token auth.
 
-## 7. Health and smoke checks
+## 9. Health and smoke checks
 
 ```bash
 curl http://127.0.0.1:8091/api/health
 python3 smoke_test.py
 python3 production_regression_test.py
 python3 production_italy_test.py
+python3 archagent_maintenance.py
+python3 healthcheck.py
 ```
 
-## 8. Current production boundaries
+## 10. Current production boundaries
 
 ArchAgent now produces source-linked Italy lead radar, fit scoring, bid-readiness dossiers, profile exports, and partner verification tracking. Official tender PDFs and legal/commercial eligibility still require human review before any bid, buyer contact, or customer delivery.

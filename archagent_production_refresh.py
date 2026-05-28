@@ -38,6 +38,7 @@ def main() -> int:
         run([sys.executable, "tender_document_collector.py", "--limit", str(args.dossiers), "--min-score", str(args.min_score)])
 
     run([sys.executable, "production_italy_test.py"])
+    run([sys.executable, "archagent_maintenance.py"])
     print("ArchAgent production refresh complete")
     return 0
 

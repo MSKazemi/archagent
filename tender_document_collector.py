@@ -10,9 +10,19 @@ collection before bidding.
 from __future__ import annotations
 
 import datetime as dt
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
+
+from proposal_engine import (
+    CUSTOMER_SAFE_DISCLAIMER,
+    PARTNER_DISCLAIMER,
+    SourceRecord,
+    disclaimers_section,
+    review_status_section,
+    source_register_markdown,
+)
 
 BASE = Path(__file__).resolve().parent
 LEADS_DB = BASE / "archagent_actionable_projects.sqlite3"
@@ -140,6 +150,54 @@ def select_top_italy_leads(limit: int = 10, min_score: int = 50) -> list[dict]:
     return enriched[:limit]
 
 
+def extract_official_links(lead: dict) -> list[dict[str, str]]:
+    """Extract the most useful official TED links from raw notice JSON."""
+    links: list[dict[str, str]] = []
+    raw_text = lead.get("raw_json") or "{}"
+    try:
+        raw = json.loads(raw_text) if isinstance(raw_text, str) else raw_text
+        if not isinstance(raw, dict):
+            raw = {}
+    except json.JSONDecodeError:
+        raw = {}
+    raw_links = raw.get("links") or {}
+    if not isinstance(raw_links, dict):
+        raw_links = {}
+    preferred = [
+        ("html", "ITA", "TED notice — Italian"),
+        ("html", "ENG", "TED notice — English"),
+        ("htmlDirect", "ITA", "TED direct HTML — Italian"),
+        ("pdf", "ITA", "TED PDF — Italian"),
+        ("xml", "MUL", "TED XML notice"),
+    ]
+    for family, lang, label in preferred:
+        family_links = raw_links.get(family) or {}
+        if not isinstance(family_links, dict):
+            continue
+        url = family_links.get(lang)
+        if url:
+            links.append({"label": label, "url": url})
+    source_url = clean(lead.get("source_url"))
+    if source_url and all(item["url"] != source_url for item in links):
+        links.insert(0, {"label": "Source URL", "url": source_url})
+    return links
+
+
+def procurement_search_links(lead: dict) -> list[dict[str, str]]:
+    notice = clean(lead.get("source_notice_id"))
+    buyer = clean(lead.get("buyer_name"))
+    query = "+".join(x for x in [notice, buyer.replace(" ", "+")] if x)
+    return [
+        {"label": "TED search", "url": f"https://ted.europa.eu/en/search/result?query={notice}"},
+        {"label": "Google procurement search", "url": f"https://www.google.com/search?q={query}+bandi+gara+capitolato"},
+        {"label": "ANAC transparency search", "url": f"https://www.anticorruzione.it/-/bandi-di-gara-e-contratti"},
+    ]
+
+
+def markdown_links(items: list[dict[str, str]]) -> str:
+    return "\n".join(f"- [{clean(item.get('label'))}]({clean(item.get('url'))})" for item in items if item.get("url")) or "- No official links extracted yet."
+
+
 def document_collection_checklist(lead: dict) -> list[str]:
     notice = clean(lead.get("source_notice_id"))
     buyer = clean(lead.get("buyer_name")) or "buyer/procurement portal"
@@ -166,6 +224,8 @@ def build_tender_dossier(notice_id: str, *, source: str = "api", save: bool = Tr
     generated = dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat()
     source_url = clean(lead.get("source_url"))
     title = clean(lead.get("title"))
+    official_links = extract_official_links(lead)
+    search_links = procurement_search_links(lead)
     markdown = f"""# Italy Tender Bid-Readiness Dossier — {notice_id}
 
 Generated: {generated}
@@ -181,6 +241,14 @@ Source: {source}
 - Estimated value: {clean(lead.get('estimated_value')) or 'Not disclosed'} {clean(lead.get('currency'))}
 - Category: {clean(lead.get('category'))}
 - TED/source URL: {source_url}
+
+## Official source links
+
+{markdown_links(official_links)}
+
+## Procurement portal search links
+
+{markdown_links(search_links)}
 
 ## Italy fit score
 
@@ -210,7 +278,7 @@ Source: {source}
 
 Human-review warning: this dossier is generated from public notice-level data. Do not submit a bid or contact a buyer/partner until the official tender documents are downloaded and checked.
 """
-    result = {"notice_id": notice_id, "lead": lead, **scored, "checklist": checklist, "markdown": markdown}
+    result = {"notice_id": notice_id, "lead": lead, **scored, "official_links": official_links, "search_links": search_links, "checklist": checklist, "markdown": markdown}
     if save:
         EXPORT_DIR.mkdir(exist_ok=True)
         safe_source = ''.join(ch if ch.isalnum() or ch in ('-', '_') else '_' for ch in source)[:40]

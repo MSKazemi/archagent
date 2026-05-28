@@ -75,6 +75,10 @@ SEARCHES = [
         "name": "italy_building_active",
         "query": "deadline-receipt-tender-date-lot >= today(0) AND publication-date >= today(-180) AND (place-of-performance-country-lot=ITA OR organisation-country-buyer=ITA) AND (classification-cpv=45* OR title-proc~ristrutturazione OR description-lot~ristrutturazione OR title-proc~riqualificazione OR description-lot~riqualificazione OR title-proc~restauro OR description-lot~restauro OR title-proc~efficientamento OR description-lot~efficientamento OR title-proc~energetico OR description-lot~energetico OR title-proc~impianti OR description-lot~impianti OR title-proc~facciata OR description-lot~facciata OR title-proc~serramenti OR description-lot~serramenti OR title-proc~isolamento OR description-lot~isolamento OR title-proc~copertura OR description-lot~copertura) SORT BY publication-date DESC",
     },
+    {
+        "name": "italy_pnrr_emilia_romagna",
+        "query": "deadline-receipt-tender-date-lot >= today(0) AND publication-date >= today(-180) AND (place-of-performance-country-lot=ITA OR organisation-country-buyer=ITA) AND (title-proc~PNRR OR description-lot~PNRR OR title-proc~M7 OR description-lot~M7 OR title-proc~emilia OR description-lot~emilia OR title-proc~bologna OR description-lot~bologna OR title-proc~romagna OR description-lot~romagna OR title-proc~cappotto OR description-lot~cappotto OR title-proc~fotovoltaico OR description-lot~fotovoltaico OR title-proc~solare OR description-lot~solare) SORT BY publication-date DESC",
+    },
 ]
 
 CATEGORY_RULES = [
