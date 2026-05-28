@@ -49,6 +49,9 @@ def main():
     assert dossier['italy_fit_score'] >= 50, dossier
     assert dossier['export_path'].endswith('.md'), dossier
     assert 'Official document collection checklist' in dossier['markdown'], dossier['markdown'][:1000]
+    assert dossier['official_links'], dossier
+    assert 'Official source links' in dossier['markdown'], dossier['markdown'][:1000]
+    assert 'Procurement portal search links' in dossier['markdown'], dossier['markdown'][:1000]
 
     summary = s.italy_summary()
     assert summary['qualified_italy_leads'] >= 20, summary

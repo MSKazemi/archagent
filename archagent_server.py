@@ -5,13 +5,15 @@ Run: python3 archagent_server.py --port 8091
 """
 from __future__ import annotations
 
-import argparse, csv, io, json, os, secrets, sqlite3, subprocess
+import argparse, csv, hashlib, io, json, os, posixpath, secrets, sqlite3, subprocess, sys, threading
 from datetime import datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 from proposal_engine import compliance_matrix_markdown, generate_building_audit, generate_compliance_matrix, generate_crm_followup, generate_outreach_pack, generate_proposal, lead_to_public_dict
 from tender_document_collector import build_tender_dossier, select_top_italy_leads
+from analyst import analyze_tender
+from compliance_agent import check_compliance
 
 BASE = Path(__file__).resolve().parent
 LEADS_DB = BASE / 'archagent_actionable_projects.sqlite3'
@@ -20,8 +22,90 @@ EXPORT_DIR = BASE / 'exports'
 PRIVATE_API_PREFIXES = ('/api/',)
 PUBLIC_GET_PATHS = {'/api/health'}
 
+def load_env_file(path: Path = BASE / '.env') -> None:
+    """Load simple KEY=VALUE lines from .env without overriding real environment."""
+    if not path.exists():
+        return
+    for raw in path.read_text(encoding='utf-8').splitlines():
+        line = raw.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+load_env_file()
+
+_LOCAL_HOSTS = {'127.0.0.1', 'localhost', '::1'}
+
 def configured_token() -> str:
     return os.getenv('ARCHAGENT_TOKEN', '').strip()
+
+def token_is_placeholder(token: str) -> bool:
+    return token in {'change-me-use-openssl-rand-hex-32', 'replace-with-long-random-token', 'changeme'}
+
+def validate_token_config(host: str = '127.0.0.1') -> None:
+    token = configured_token()
+    is_local = host in _LOCAL_HOSTS
+    if token_is_placeholder(token):
+        raise SystemExit('Refusing to start with placeholder ARCHAGENT_TOKEN. Generate a real token or unset ARCHAGENT_TOKEN for local unauthenticated development.')
+    if not is_local:
+        if not token:
+            if os.getenv('ARCHAGENT_ALLOW_UNAUTHENTICATED_PUBLIC') != '1':
+                raise SystemExit(
+                    f'Refusing to bind {host!r} without ARCHAGENT_TOKEN. '
+                    'Set a strong token (openssl rand -hex 32) or set '
+                    'ARCHAGENT_ALLOW_UNAUTHENTICATED_PUBLIC=1 to override (not recommended).'
+                )
+            print('[WARNING] Binding to public interface without authentication. '
+                  'Set ARCHAGENT_TOKEN for any non-local deployment.', file=sys.stderr, flush=True)
+        elif len(token) < 32:
+            raise SystemExit(
+                f'Refusing to start: ARCHAGENT_TOKEN must be at least 32 characters for '
+                f'non-local deployments (current length: {len(token)}). '
+                'Generate one with: openssl rand -hex 32'
+            )
+    else:
+        if not token:
+            print('[WARNING] Running unauthenticated on localhost. '
+                  'Set ARCHAGENT_TOKEN before exposing to any network.', file=sys.stderr, flush=True)
+
+def parse_int_param(params: dict, key: str, default: int, min_val: int | None = None, max_val: int | None = None) -> int:
+    raw = (params.get(key) or [str(default)])[0]
+    try:
+        val = int(raw)
+    except (ValueError, TypeError):
+        raise ValueError(f"Invalid value for '{key}': expected integer")
+    if min_val is not None and val < min_val:
+        raise ValueError(f"Parameter '{key}' must be >= {min_val}")
+    if max_val is not None and val > max_val:
+        val = max_val
+    return val
+
+def parse_float_param(params: dict, key: str, default: float | None = None) -> float | None:
+    raw = (params.get(key) or [''])[0]
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except (ValueError, TypeError):
+        raise ValueError(f"Invalid value for '{key}': expected number")
+
+def parse_bool_param(params: dict, key: str, default: bool = False) -> bool:
+    raw = (params.get(key) or [''])[0].strip().lower()
+    if not raw:
+        return default
+    if raw in ('1', 'true', 'yes'):
+        return True
+    if raw in ('0', 'false', 'no'):
+        return False
+    raise ValueError(f"Invalid value for '{key}': expected 0 or 1")
+
+def _normalize_request_path(raw_path: str) -> str:
+    """URL-decode and posix-normalize a request path to catch encoded traversal."""
+    return posixpath.normpath(unquote(raw_path))
 
 def auth_enabled() -> bool:
     return bool(configured_token())
@@ -40,7 +124,8 @@ def now() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + 'Z'
 
 def app_conn():
-    con = sqlite3.connect(APP_DB); con.row_factory = sqlite3.Row; return con
+    con = sqlite3.connect(APP_DB, timeout=5.0); con.row_factory = sqlite3.Row
+    con.execute("PRAGMA journal_mode=WAL"); return con
 
 def leads_conn():
     con = sqlite3.connect(LEADS_DB); con.row_factory = sqlite3.Row; return con
@@ -149,7 +234,52 @@ def init_app_db() -> None:
       updated_at TEXT NOT NULL,
       UNIQUE(source, source_id)
     );
+    CREATE TABLE IF NOT EXISTS bid_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_name TEXT NOT NULL,
+      email TEXT,
+      soa_qualifications TEXT NOT NULL DEFAULT '[]',
+      ateco_codes TEXT NOT NULL DEFAULT '[]',
+      certifications_held TEXT NOT NULL DEFAULT '[]',
+      avg_project_value_eur REAL,
+      geographic_regions TEXT NOT NULL DEFAULT '[]',
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS pdf_extractions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pdf_sha256 TEXT NOT NULL UNIQUE,
+      notice_id TEXT,
+      extracted_text TEXT NOT NULL,
+      page_count INTEGER NOT NULL DEFAULT 0,
+      is_truncated INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS analysis_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      status TEXT NOT NULL DEFAULT 'queued',
+      notice_id TEXT,
+      bid_profile_id TEXT,
+      result_json TEXT,
+      error TEXT,
+      created_at TEXT NOT NULL,
+      started_at TEXT,
+      completed_at TEXT
+    );
     """ )
+    # Migrate tender_dossiers to add LLM analysis columns (idempotent)
+    existing_cols = {row[1] for row in con.execute('PRAGMA table_info(tender_dossiers)')}
+    for col, defn in [
+        ('analyst_json', 'TEXT'),
+        ('analyst_cost_eur', 'REAL'),
+        ('analyst_model', 'TEXT'),
+        ('analyst_pages_analyzed', 'INTEGER'),
+        ('is_partial', 'INTEGER DEFAULT 0'),
+        ('phase', "TEXT DEFAULT 'rule_based'"),
+    ]:
+        if col not in existing_cols:
+            con.execute(f'ALTER TABLE tender_dossiers ADD COLUMN {col} {defn}')
     if con.execute('SELECT COUNT(*) FROM contractors').fetchone()[0] == 0:
         seed = [
             ('Facade & Insulation Crew', 'DEU,AUT,CHE', 'insulation,facade,envelope,roof', '2-4 weeks', 'referral fee or managed bid support', 'low', 'Good fit for roof/facade insulation tenders.'),
@@ -160,6 +290,30 @@ def init_app_db() -> None:
             ('General Contractor Marketplace', 'EU', 'construction,renovation,rehabilitation,multi-trade', 'varies', 'success fee', 'medium', 'Fallback for multi-trade work packages.'),
         ]
         con.executemany('INSERT INTO contractors(name,countries,trades,availability,commercial_model,risk,notes,created_at) VALUES (?,?,?,?,?,?,?,?)', [(*row, now()) for row in seed])
+    # Mark any jobs that were running when the server last stopped
+    con.execute(
+        "UPDATE analysis_jobs SET status='error', error='Server restarted while job was in-flight',"
+        " completed_at=? WHERE status IN ('queued','running')",
+        (now(),),
+    )
+    if con.execute('SELECT COUNT(*) FROM bid_profiles').fetchone()[0] == 0:
+        demo_soa = json.dumps([
+            {'category': 'OG11', 'classification': 'III-bis'},
+            {'category': 'OG1',  'classification': 'II'},
+            {'category': 'OS28', 'classification': 'II'},
+        ])
+        demo_certs = json.dumps(['ISO 9001:2015', 'ISO 14001'])
+        demo_ateco = json.dumps(['43.22', '43.21', '41.20'])
+        demo_regions = json.dumps(['ITA', 'ITA-LO', 'ITA-ER', 'ITA-VE'])
+        con.execute(
+            'INSERT INTO bid_profiles(company_name,soa_qualifications,certifications_held,'
+            'ateco_codes,geographic_regions,avg_project_value_eur,notes,created_at,updated_at)'
+            ' VALUES (?,?,?,?,?,?,?,?,?)',
+            ('Demo — Termoidraulica Italiana SRL', demo_soa, demo_certs, demo_ateco,
+             demo_regions, 750_000.0,
+             'Demo ESCO/impianti contractor. OG11 III-bis covers up to €1.03M HVAC/energy work across Italy. Remove or replace with real profile before client delivery.',
+             now(), now()),
+        )
     con.commit(); con.close()
 
 def rows_to_dicts(rows): return [dict(r) for r in rows]
@@ -169,22 +323,35 @@ def get_lead(notice_id: str):
     return lead_to_public_dict(dict(row)) if row else None
 
 def query_leads(params):
-    q = (params.get('q') or [''])[0].strip().lower(); country = (params.get('country') or [''])[0].strip(); category = (params.get('category') or [''])[0].strip(); sort = (params.get('sort') or ['deadline'])[0]
-    limit = min(int((params.get('limit') or ['100'])[0] or 100), 500); offset = int((params.get('offset') or ['0'])[0] or 0)
-    where = ['deadline_date IS NOT NULL']; args = []
-    if country: where.append('(performance_country=? OR buyer_country=?)'); args += [country, country]
-    if category: where.append('category=?'); args.append(category)
-    min_value = (params.get('min_value') or [''])[0]
-    if min_value not in ('', None):
+    q = (params.get('q') or [''])[0].strip().lower()
+    country = (params.get('country') or [''])[0].strip()
+    category = (params.get('category') or [''])[0].strip()
+    sort = (params.get('sort') or ['deadline'])[0]
+    include_expired = parse_bool_param(params, 'include_expired', False)
+    limit = parse_int_param(params, 'limit', 100, min_val=0, max_val=500)
+    offset = parse_int_param(params, 'offset', 0, min_val=0)
+    where = ['deadline_date IS NOT NULL']
+    args = []
+    if not include_expired:
+        where.append("deadline_date >= date('now')")
+    if country:
+        where.append('(performance_country=? OR buyer_country=?)'); args += [country, country]
+    if category:
+        where.append('category=?'); args.append(category)
+    min_value = parse_float_param(params, 'min_value')
+    if min_value is not None:
         where.append('(estimated_value IS NOT NULL AND estimated_value >= ?)')
-        args.append(float(min_value))
+        args.append(min_value)
     if q:
-        where.append('(lower(title) LIKE ? OR lower(description) LIKE ? OR lower(buyer_name) LIKE ? OR lower(performance_city) LIKE ? OR lower(cpv_codes) LIKE ?)'); like = f'%{q}%'; args += [like] * 5
-    order = {'score':'relevance_score DESC, deadline_date ASC','value':'estimated_value DESC, relevance_score DESC'}.get(sort, 'deadline_date ASC, relevance_score DESC')
-    where_sql = ' AND '.join(where); con = leads_conn()
+        where.append('(lower(title) LIKE ? OR lower(description) LIKE ? OR lower(buyer_name) LIKE ? OR lower(performance_city) LIKE ? OR lower(cpv_codes) LIKE ?)')
+        like = f'%{q}%'; args += [like] * 5
+    order = {'score': 'relevance_score DESC, deadline_date ASC', 'value': 'estimated_value DESC, relevance_score DESC'}.get(sort, 'deadline_date ASC, relevance_score DESC')
+    where_sql = ' AND '.join(where)
+    con = leads_conn()
     rows = con.execute(f'SELECT * FROM project_leads WHERE {where_sql} ORDER BY {order} LIMIT ? OFFSET ?', args + [limit, offset]).fetchall()
-    total = con.execute(f'SELECT COUNT(*) FROM project_leads WHERE {where_sql}', args).fetchone()[0]; con.close()
-    return {'total': total, 'items': [lead_to_public_dict(dict(r)) for r in rows]}
+    total = con.execute(f'SELECT COUNT(*) FROM project_leads WHERE {where_sql}', args).fetchone()[0]
+    con.close()
+    return {'total': total, 'items': [lead_to_public_dict(dict(r)) for r in rows], 'include_expired': include_expired}
 
 def stats():
     con = leads_conn(); total = con.execute('SELECT COUNT(*) FROM project_leads').fetchone()[0]
@@ -206,7 +373,7 @@ def create_prospect(payload):
     con.commit(); row = con.execute('SELECT * FROM prospects WHERE id=?', (pid,)).fetchone(); con.close(); return dict(row)
 
 def list_table(name):
-    allowed = {'prospects','followups','proposals','contractors','activities','customer_profiles','lead_radar_exports','tender_dossiers','worker_verifications'}
+    allowed = {'prospects','followups','proposals','contractors','activities','customer_profiles','lead_radar_exports','tender_dossiers','worker_verifications','bid_profiles'}
     if name not in allowed:
         raise ValueError('invalid table')
     con = app_conn(); rows = con.execute(f'SELECT * FROM {name} ORDER BY id DESC LIMIT 200').fetchall(); con.close(); return rows_to_dicts(rows)
@@ -274,7 +441,8 @@ def recommendation_for_lead(lead):
 def export_lead_radar(params):
     profile = get_customer_profile((params.get('profile_id') or [''])[0])
     fmt = (params.get('format') or ['markdown'])[0].lower()
-    limit = min(int((params.get('limit') or [str((profile or {}).get('max_leads') or 30)])[0] or 30), 100)
+    default_limit = (profile or {}).get('max_leads') or 30
+    limit = min(parse_int_param(params, 'limit', default_limit, min_val=0), 100)
     lead_params = profile_to_lead_params(profile, params)
     lead_params['limit'] = [str(limit)]
     lead_params['sort'] = lead_params.get('sort') or ['score']
@@ -311,7 +479,8 @@ def export_lead_radar(params):
 
 def query_workers(params):
     q = (params.get('q') or [''])[0].strip().lower(); country = (params.get('country') or [''])[0].strip(); worker_type = (params.get('type') or [''])[0].strip(); trade = (params.get('trade') or [''])[0].strip().lower(); verification_status = (params.get('verification_status') or [''])[0].strip()
-    limit = min(int((params.get('limit') or ['100'])[0] or 100), 500); offset = int((params.get('offset') or ['0'])[0] or 0)
+    limit = parse_int_param(params, 'limit', 100, min_val=0, max_val=500)
+    offset = parse_int_param(params, 'offset', 0, min_val=0)
     where = ['1=1']; args = []
     if country: where.append('country=?'); args.append(country)
     if worker_type: where.append('worker_type=?'); args.append(worker_type)
@@ -367,7 +536,8 @@ def verify_worker(payload):
     con.commit(); updated = dict(con.execute('SELECT id,name,worker_type,trades,country,city,phone,email,website,verification_status,source_url FROM expert_workers WHERE id=?', (worker_id,)).fetchone()); updated['verification_id'] = cur.lastrowid; con.close(); return updated
 
 def italy_summary():
-    top = select_top_italy_leads(limit=10, min_score=50)
+    all_qualified = select_top_italy_leads(limit=100, min_score=50)
+    top = all_qualified[:10]
     con = app_conn()
     italy_workers = con.execute("SELECT COUNT(*) FROM expert_workers WHERE country='Italy'").fetchone()[0]
     italy_profiles = con.execute("SELECT COUNT(*) FROM customer_profiles WHERE countries LIKE '%ITA%'").fetchone()[0]
@@ -375,7 +545,7 @@ def italy_summary():
     dossiers = con.execute('SELECT COUNT(*) FROM tender_dossiers').fetchone()[0]
     con.close()
     visible_value = sum(float(l.get('estimated_value') or 0) for l in top if (l.get('currency') or '') == 'EUR')
-    return {'qualified_italy_leads': len(select_top_italy_leads(limit=100, min_score=50)), 'top_leads': top, 'visible_top10_eur': visible_value, 'italy_workers': italy_workers, 'verified_italy_workers': verified_workers, 'italy_profiles': italy_profiles, 'tender_dossiers': dossiers, 'report_path': str(BASE / 'ITALY_MARKET_REPORT.md')}
+    return {'qualified_italy_leads': len(all_qualified), 'top_leads': top, 'visible_top10_eur': visible_value, 'italy_workers': italy_workers, 'verified_italy_workers': verified_workers, 'italy_profiles': italy_profiles, 'tender_dossiers': dossiers, 'report_path': str(BASE / 'ITALY_MARKET_REPORT.md')}
 
 def create_tender_dossier_payload(payload):
     notice_id = payload.get('lead_notice_id') or payload.get('notice_id')
@@ -520,9 +690,254 @@ Public listings are unverified outreach leads, not vetted partners.
     con.commit(); con.close()
     return result
 
+# ─── Bid profiles ─────────────────────────────────────────────────────────────
+
+def create_bid_profile(payload: dict) -> dict:
+    name = (payload.get('company_name') or '').strip()
+    if not name:
+        raise ValueError('company_name is required')
+    ts = now()
+    con = app_conn()
+    cur = con.execute(
+        'INSERT INTO bid_profiles(company_name,email,soa_qualifications,ateco_codes,'
+        'certifications_held,avg_project_value_eur,geographic_regions,notes,created_at,updated_at) '
+        'VALUES (?,?,?,?,?,?,?,?,?,?)',
+        (
+            name,
+            payload.get('email', ''),
+            json.dumps(payload.get('soa_qualifications') or [], ensure_ascii=False),
+            json.dumps(payload.get('ateco_codes') or [], ensure_ascii=False),
+            json.dumps(payload.get('certifications_held') or [], ensure_ascii=False),
+            payload.get('avg_project_value_eur'),
+            json.dumps(payload.get('geographic_regions') or [], ensure_ascii=False),
+            payload.get('notes', ''),
+            ts, ts,
+        ),
+    )
+    pid = cur.lastrowid
+    con.execute('INSERT INTO activities(kind,message,payload_json,created_at) VALUES (?,?,?,?)',
+                ('bid_profile', f'Created bid profile #{pid} for {name}', json.dumps({'id': pid}), ts))
+    con.commit()
+    row = con.execute('SELECT * FROM bid_profiles WHERE id=?', (pid,)).fetchone()
+    con.close()
+    return dict(row)
+
+
+def get_bid_profile(profile_id) -> dict | None:
+    con = app_conn()
+    row = con.execute('SELECT * FROM bid_profiles WHERE id=?', (profile_id,)).fetchone()
+    con.close()
+    return dict(row) if row else None
+
+
+# ─── Multipart parser ─────────────────────────────────────────────────────────
+
+def _parse_multipart(content_type: str, body: bytes) -> dict[str, dict]:
+    """Parse multipart/form-data body. Returns {name: {data: bytes, filename: str|None}}."""
+    boundary = None
+    for part in content_type.split(';'):
+        p = part.strip()
+        if p.startswith('boundary='):
+            boundary = p[9:].strip('"')
+            break
+    if not boundary:
+        raise ValueError('No boundary in Content-Type multipart header')
+
+    delimiter = ('--' + boundary).encode()
+    parts_raw = body.split(delimiter)
+    result: dict[str, dict] = {}
+
+    for raw in parts_raw[1:]:
+        if raw.strip() in (b'', b'--', b'--\r\n', b'--\n'):
+            continue
+        sep = b'\r\n\r\n' if b'\r\n\r\n' in raw else b'\n\n'
+        if sep not in raw:
+            continue
+        header_bytes, content = raw.split(sep, 1)
+        # Strip trailing boundary marker and CRLF
+        content = content.rstrip(b'\r\n')
+        if content.endswith(b'--'):
+            content = content[:-2].rstrip(b'\r\n')
+
+        name = filename = None
+        for line in header_bytes.decode('utf-8', errors='replace').splitlines():
+            low = line.lower()
+            if 'content-disposition' in low:
+                for seg in line.split(';'):
+                    s = seg.strip()
+                    if s.lower().startswith('name='):
+                        name = s[5:].strip('"')
+                    elif s.lower().startswith('filename='):
+                        filename = s[9:].strip('"')
+        if name:
+            result[name] = {'data': content, 'filename': filename}
+
+    return result
+
+
+# ─── LLM dossier analyze ──────────────────────────────────────────────────────
+
+def _run_analysis_job(job_id: int, pdf_bytes: bytes, notice_id: str, bid_profile_id: str | None) -> None:
+    """Background thread: run a full analysis and update the job row."""
+    con = app_conn()
+    con.execute("UPDATE analysis_jobs SET status='running', started_at=? WHERE id=?", (now(), job_id))
+    con.commit(); con.close()
+    try:
+        result = analyze_dossier(pdf_bytes, notice_id, bid_profile_id)
+        con = app_conn()
+        con.execute(
+            "UPDATE analysis_jobs SET status='done', result_json=?, completed_at=? WHERE id=?",
+            (json.dumps(result, ensure_ascii=False), now(), job_id),
+        )
+        con.commit(); con.close()
+    except Exception as exc:
+        con = app_conn()
+        con.execute(
+            "UPDATE analysis_jobs SET status='error', error=?, completed_at=? WHERE id=?",
+            (str(exc), now(), job_id),
+        )
+        con.commit(); con.close()
+
+
+def submit_analysis_job(pdf_bytes: bytes, notice_id: str, bid_profile_id: str | None) -> dict:
+    """Create a job row and start a background analysis thread immediately."""
+    con = app_conn()
+    cur = con.execute(
+        "INSERT INTO analysis_jobs(status,notice_id,bid_profile_id,created_at)"
+        " VALUES ('queued',?,?,?)",
+        (notice_id or None, bid_profile_id or None, now()),
+    )
+    job_id = cur.lastrowid
+    con.commit(); con.close()
+    t = threading.Thread(
+        target=_run_analysis_job,
+        args=(job_id, pdf_bytes, notice_id, bid_profile_id),
+        daemon=True,
+        name=f'analysis-job-{job_id}',
+    )
+    t.start()
+    return {'job_id': job_id, 'status': 'queued'}
+
+
+def get_analysis_job(job_id: int) -> dict:
+    con = app_conn()
+    row = con.execute('SELECT * FROM analysis_jobs WHERE id=?', (job_id,)).fetchone()
+    con.close()
+    if not row:
+        raise ValueError(f'Job {job_id} not found')
+    d = dict(row)
+    if d.get('result_json'):
+        try:
+            d['result'] = json.loads(d.pop('result_json'))
+        except Exception:
+            d['result'] = None
+    else:
+        d.pop('result_json', None)
+        d['result'] = None
+    return d
+
+
+def analyze_dossier(pdf_bytes: bytes, notice_id: str, bid_profile_id: str | None) -> dict:
+    """Run analyst + compliance and persist result to tender_dossiers."""
+    azure_key = os.environ.get('AZURE_OPENAI_KEY', '').strip()
+    if not azure_key:
+        raise ValueError(
+            'AZURE_OPENAI_KEY not configured — set it in .env to enable LLM analysis'
+        )
+
+    # SHA-256 cache: skip pdftotext on repeated analysis of same document
+    pdf_hash = hashlib.sha256(pdf_bytes).hexdigest()
+    con = app_conn()
+    cached_row = con.execute(
+        'SELECT extracted_text, page_count, is_truncated FROM pdf_extractions WHERE pdf_sha256=?',
+        (pdf_hash,),
+    ).fetchone()
+    con.close()
+
+    cached_text = None
+    if cached_row:
+        cached_text = (cached_row['extracted_text'], cached_row['page_count'], bool(cached_row['is_truncated']))
+
+    def _store_extraction(text: str, pages: int, truncated: bool) -> None:
+        try:
+            c = app_conn()
+            c.execute(
+                'INSERT OR IGNORE INTO pdf_extractions'
+                '(pdf_sha256,notice_id,extracted_text,page_count,is_truncated,created_at)'
+                ' VALUES (?,?,?,?,?,?)',
+                (pdf_hash, notice_id or None, text, pages, 1 if truncated else 0, now()),
+            )
+            c.commit(); c.close()
+        except Exception:
+            pass
+
+    result = analyze_tender(
+        pdf_bytes, notice_id=notice_id or '',
+        _cached_text=cached_text,
+        _on_extracted=None if cached_text else _store_extraction,
+    )
+    if result['status'] == 'error':
+        return result
+
+    # Compliance matching (skip if no profile requested)
+    compliance = None
+    if bid_profile_id:
+        profile = get_bid_profile(bid_profile_id)
+        compliance = check_compliance(result.get('extracted_json') or {}, profile)
+    else:
+        compliance = check_compliance(result.get('extracted_json') or {}, None)
+
+    # Persist to tender_dossiers
+    safe_id = notice_id.replace('/', '-') if notice_id else 'unknown'
+    export_path = str(EXPORT_DIR / f'analyst_{safe_id}_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.json')
+    EXPORT_DIR.mkdir(exist_ok=True)
+
+    full_output = {**result, 'compliance': compliance, 'notice_id': notice_id}
+    Path(export_path).write_text(json.dumps(full_output, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    con = app_conn()
+    cur = con.execute(
+        'INSERT INTO tender_dossiers(source_notice_id,source,analyst_json,analyst_cost_eur,'
+        'analyst_pages_analyzed,is_partial,phase,export_path,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+        (
+            notice_id or 'upload',
+            'dossier_analyze',
+            json.dumps(result.get('extracted_json'), ensure_ascii=False),
+            result.get('cost_estimate_eur', 0),
+            result.get('pages_analyzed', 0),
+            1 if result.get('is_truncated') or result.get('is_scanned') else 0,
+            'llm',
+            export_path,
+            now(),
+        ),
+    )
+    dossier_id = cur.lastrowid
+    con.execute('INSERT INTO activities(kind,message,payload_json,created_at) VALUES (?,?,?,?)',
+                ('dossier_analyze', f'LLM analysis dossier #{dossier_id} for {notice_id or "upload"}',
+                 json.dumps({'notice_id': notice_id, 'cost_eur': result.get('cost_estimate_eur')}), now()))
+    con.commit(); con.close()
+
+    return {**full_output, 'dossier_id': dossier_id, 'export_path': export_path}
+
+
 class Handler(SimpleHTTPRequestHandler):
+    def log_message(self, fmt, *args):
+        entry = {
+            'time': now(),
+            'client': self.client_address[0] if self.client_address else '',
+            'method': getattr(self, 'command', ''),
+            'path': self.path,
+            'message': fmt % args,
+        }
+        print(json.dumps(entry, ensure_ascii=False), file=sys.stderr, flush=True)
+
     def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*'); self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'); self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-ArchAgent-Token'); super().end_headers()
+        # Wildcard CORS only for unauthenticated local dev; guarded by token when auth is active.
+        if not auth_enabled():
+            self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-ArchAgent-Token')
+        super().end_headers()
     def json(self, data, status=200):
         payload = json.dumps(data, ensure_ascii=False).encode('utf-8'); self.send_response(status); self.send_header('Content-Type', 'application/json; charset=utf-8'); self.send_header('Content-Length', str(len(payload))); self.end_headers(); self.wfile.write(payload)
     def unauthorized(self): return self.json({'error': 'unauthorized', 'message': 'Set X-ArchAgent-Token or Authorization: Bearer token.'}, 401)
@@ -530,12 +945,26 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path in PUBLIC_GET_PATHS: return True
         if parsed.path.startswith(PRIVATE_API_PREFIXES) and not token_ok(self.headers): return False
         return True
+    def static_path_allowed(self, parsed):
+        path = _normalize_request_path(parsed.path)
+        public_paths = {'/', '/index.html', '/app', '/app.html', '/favicon.ico'}
+        if path in public_paths:
+            return True
+        if path.startswith('/exports/'):
+            return (not auth_enabled()) or token_ok(self.headers)
+        return False
     def do_OPTIONS(self): self.send_response(204); self.end_headers()
     def do_GET(self):
         parsed = urlparse(self.path); params = parse_qs(parsed.query)
         if not self.require_auth(parsed): return self.unauthorized()
         try:
-            if parsed.path == '/api/health': return self.json({'ok': True, 'auth_enabled': auth_enabled(), 'time': now()})
+            if parsed.path == '/api/health':
+                health = {'ok': True, 'auth_enabled': auth_enabled(), 'time': now()}
+                try:
+                    health['leads_db_updated_at'] = datetime.utcfromtimestamp(LEADS_DB.stat().st_mtime).strftime('%Y-%m-%dT%H:%M:%SZ')
+                except Exception:
+                    pass
+                return self.json(health)
             if parsed.path == '/api/stats': return self.json(stats())
             if parsed.path == '/api/italy/summary': return self.json(italy_summary())
             if parsed.path == '/api/leads': return self.json(query_leads(params))
@@ -554,13 +983,50 @@ class Handler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/worker-stats': return self.json(worker_stats())
             if parsed.path == '/api/worker-verifications': return self.json({'items': list_table('worker_verifications')})
             if parsed.path == '/api/activities': return self.json({'items': list_table('activities')})
+            if parsed.path == '/api/bid-profiles': return self.json({'items': list_table('bid_profiles')})
+            if parsed.path == '/api/dossier/jobs':
+                con = app_conn()
+                rows = rows_to_dicts(con.execute('SELECT id,status,notice_id,bid_profile_id,error,created_at,started_at,completed_at FROM analysis_jobs ORDER BY id DESC LIMIT 40').fetchall())
+                con.close()
+                return self.json({'items': rows})
+            if parsed.path.startswith('/api/dossier/jobs/'):
+                jid_str = parsed.path.split('/')[-1]
+                try:
+                    return self.json(get_analysis_job(int(jid_str)))
+                except (ValueError, TypeError) as exc:
+                    return self.json({'error': str(exc)}, 404)
             if parsed.path == '/app': self.path = '/app.html'; return super().do_GET()
+            if not self.static_path_allowed(parsed): return self.json({'error': 'not found'}, 404)
             return super().do_GET()
-        except Exception as exc: return self.json({'error': str(exc)}, 500)
+        except ValueError as exc:
+            return self.json({'error': str(exc)}, 400)
+        except Exception as exc:
+            print(f'[ERROR] GET {parsed.path}: {exc!r}', file=sys.stderr, flush=True)
+            return self.json({'error': 'internal server error'}, 500)
     def do_POST(self):
         parsed = urlparse(self.path)
         if not self.require_auth(parsed): return self.unauthorized()
         try:
+            # Multipart endpoints — handled before read_json
+            if parsed.path in ('/api/dossier/analyze', '/api/dossier/analyze/async'):
+                ct = self.headers.get('Content-Type', '')
+                if 'multipart/form-data' not in ct:
+                    return self.json({'error': 'Content-Type must be multipart/form-data'}, 400)
+                length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(length)
+                try:
+                    parts = _parse_multipart(ct, body)
+                except ValueError as exc:
+                    return self.json({'error': str(exc)}, 400)
+                pdf_entry = parts.get('pdf_file') or parts.get('file')
+                if not pdf_entry or not pdf_entry.get('data'):
+                    return self.json({'error': 'pdf_file field is required'}, 400)
+                notice_id = (parts.get('notice_id') or {}).get('data', b'').decode(errors='replace').strip()
+                bid_profile_id = (parts.get('bid_profile_id') or {}).get('data', b'').decode(errors='replace').strip() or None
+                if parsed.path.endswith('/async'):
+                    return self.json(submit_analysis_job(pdf_entry['data'], notice_id, bid_profile_id), 202)
+                return self.json(analyze_dossier(pdf_entry['data'], notice_id, bid_profile_id), 201)
+
             payload = read_json(self)
             if parsed.path == '/api/prospects': return self.json(create_prospect(payload), 201)
             if parsed.path == '/api/customer-profiles': return self.json(create_customer_profile(payload), 201)
@@ -574,10 +1040,23 @@ class Handler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/match': return self.json({'items': match_contractors(payload)})
             if parsed.path == '/api/outreach': return self.json(create_outreach_pack(payload), 201)
             if parsed.path == '/api/dossier': return self.json(create_project_dossier(payload), 201)
+            if parsed.path == '/api/bid-profiles': return self.json(create_bid_profile(payload), 201)
             return self.json({'error': 'not found'}, 404)
-        except Exception as exc: return self.json({'error': str(exc)}, 400)
+        except ValueError as exc:
+            return self.json({'error': str(exc)}, 400)
+        except Exception as exc:
+            print(f'[ERROR] POST {parsed.path}: {exc!r}', file=sys.stderr, flush=True)
+            return self.json({'error': 'internal server error'}, 500)
 
 def main():
-    parser = argparse.ArgumentParser(); parser.add_argument('--port', type=int, default=8091); args = parser.parse_args(); init_app_db(); os.chdir(BASE)
-    server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler); print(f'ArchAgent server running: http://127.0.0.1:{args.port}/app'); print(f'API stats: http://127.0.0.1:{args.port}/api/stats'); server.serve_forever()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', default=os.getenv('ARCHAGENT_HOST', '127.0.0.1'))
+    parser.add_argument('--port', type=int, default=int(os.getenv('ARCHAGENT_PORT', '8091')))
+    args = parser.parse_args()
+    validate_token_config(args.host)
+    init_app_db(); os.chdir(BASE)
+    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    print(f'ArchAgent server running: http://{args.host}:{args.port}/app')
+    print(f'API stats: http://{args.host}:{args.port}/api/stats')
+    server.serve_forever()
 if __name__ == '__main__': main()

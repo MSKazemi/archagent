@@ -1,0 +1,14 @@
+services:
+  archagent:
+    build: .
+    image: archagent-buildingos:local
+    environment:
+      ARCHAGENT_TOKEN: ${ARCHAGENT_TOKEN:?Set ARCHAGENT_TOKEN before running docker compose}
+      ARCHAGENT_HOST: 0.0.0.0
+      ARCHAGENT_PORT: 8091
+      ARCHAGENT_HEALTH_HOST: 127.0.0.1
+    ports:
+      - "127.0.0.1:8091:8091"
+    volumes:
+      - ./:/app
+    restart: unless-stopped

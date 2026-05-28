@@ -1,0 +1,13 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+.env
+.env.*
+*.sqlite3
+*-wal
+*-shm
+backups/
+exports/
+.claude/
+.pytest_cache

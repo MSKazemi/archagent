@@ -8,7 +8,7 @@ replaced later by a Hermes/LLM workflow for deeper reasoning.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional
 
 COUNTRY_NAMES = {
@@ -44,6 +44,94 @@ PACKAGE_PRICES = {
     'enterprise': 'Custom monthly retainer for portfolios and contractors',
 }
 
+# ---- Review status, disclaimers, source/requirement records ----
+
+REVIEW_STATUSES = [
+    'draft_generated',
+    'source_checked',
+    'requirements_checked',
+    'risks_checked',
+    'partner_status_checked',
+    'customer_ready',
+    'delivered',
+]
+
+CUSTOMER_SAFE_DISCLAIMER = (
+    "This is decision-support material generated from public/official sources and internal "
+    "analysis. It is not legal, procurement, engineering, or financial advice. Official tender "
+    "documents and qualified human review control over this summary."
+)
+
+PARTNER_DISCLAIMER = (
+    "Partner/worker candidates are public or manually researched records unless explicitly "
+    "marked verified. Do not treat them as qualified subcontractors without direct verification."
+)
+
+
+@dataclass
+class SourceRecord:
+    """Evidence/source reference for a readiness pack section."""
+    source_type: str                              # TED | ANAC | Consip | regional_portal | uploaded_doc | manual_note
+    source_url: str
+    source_title: str
+    retrieved_at: str                             # ISO-8601 datetime string
+    snippet: str = ''
+    confidence: str = 'public_unverified'         # official | public_unverified | manual_assumption
+    hash: Optional[str] = None
+
+
+@dataclass
+class RequirementRecord:
+    """Structured compliance requirement with citation or explicit assumption label."""
+    category: str    # deadline|eligibility|SOA|CAM|site_visit|guarantee|subcontracting|certification|reference|technical_scope|financial|document|partner_gap|other
+    text: str
+    severity: str = 'unknown'         # blocker|high|medium|low|unknown
+    customer_status: str = 'unknown'  # satisfied|missing|unknown|not_applicable
+    source_ref: str = ''              # source_title citation or 'explicit assumption'
+    notes: str = ''
+
+
+def source_register_markdown(sources: List) -> str:
+    """Render a Source Register section from SourceRecord objects or equivalent dicts."""
+    if not sources:
+        return "## Source Register\n\n_No sources registered._\n"
+    lines = [
+        "## Source Register",
+        "",
+        "| Type | Source | Retrieved | Confidence | Snippet |",
+        "|------|--------|-----------|------------|---------|",
+    ]
+    for s in sources:
+        if isinstance(s, SourceRecord):
+            stype, title, url = s.source_type, s.source_title, s.source_url
+            retrieved, conf, snippet = s.retrieved_at, s.confidence, s.snippet
+        else:
+            stype = str(s.get('source_type', ''))
+            title = str(s.get('source_title', ''))
+            url = str(s.get('source_url', ''))
+            retrieved = str(s.get('retrieved_at', ''))
+            conf = str(s.get('confidence', 'public_unverified'))
+            snippet = str(s.get('snippet', ''))
+        conf_label = conf.replace('_', ' ')
+        snippet_short = (snippet[:120] + '…') if len(snippet) > 120 else snippet
+        lines.append(f"| {stype} | [{title}]({url}) | {retrieved} | {conf_label} | {snippet_short} |")
+    return '\n'.join(lines) + '\n'
+
+
+def review_status_section(status: str = 'draft_generated', reviewer: str = '') -> str:
+    """Render a Human Review Status section."""
+    reviewer_line = f"\nReviewer: {reviewer}" if reviewer else ""
+    return f"## Human Review Status\n\nStatus: **{status}**{reviewer_line}\n"
+
+
+def disclaimers_section() -> str:
+    """Render the customer-safe and partner disclaimers."""
+    return (
+        "## Disclaimers\n\n"
+        f"> {CUSTOMER_SAFE_DISCLAIMER}\n\n"
+        f"> {PARTNER_DISCLAIMER}\n"
+    )
+
 
 def clean(value) -> str:
     if value is None:
@@ -66,7 +154,12 @@ def value_label(value, currency: str = '') -> str:
 
 def days_until(deadline: str) -> Optional[int]:
     try:
-        return (datetime.strptime(deadline[:10], '%Y-%m-%d').date() - date.today()).days
+        # Tender dates are stored as date-only values and SQLite filters use UTC
+        # date('now'). Use UTC here too so the web app does not show "-1 days
+        # left" during evening sessions in local timezones while the API still
+        # includes same-day tenders.
+        today = datetime.now(timezone.utc).date()
+        return (datetime.strptime(deadline[:10], '%Y-%m-%d').date() - today).days
     except Exception:
         return None
 
@@ -197,22 +290,34 @@ def generate_compliance_matrix(lead: Dict) -> Dict:
     buyer = clean(lead.get('buyer_name')) or 'Contracting authority'
     location = lead['country_label'] + (f" / {clean(lead.get('performance_city'))}" if clean(lead.get('performance_city')) else '')
 
+    generated_at = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    source_title = clean(lead.get('source_notice_id')) or (lead['short_title'][:60] if lead['short_title'] else 'notice')
+    sources: List[Dict] = [{
+        'source_type': 'TED',
+        'source_url': source,
+        'source_title': f'TED Notice — {source_title}',
+        'retrieved_at': generated_at,
+        'snippet': f'{buyer} / {category} / deadline {deadline}',
+        'confidence': 'official' if source != 'Official notice required' else 'manual_assumption',
+    }]
+
+    assumption = 'explicit assumption — verify from official tender documents'
     base_items = [
-        ('Official notice and tender documents', 'Bid manager', 'Download full tender pack, appendices, forms, drawings, and addenda.', 'Critical', 'Not started'),
-        ('Eligibility and exclusion grounds', 'Commercial lead', 'Company registration, tax/social declarations, exclusion/self-declaration forms.', 'Critical', 'Not started'),
-        ('Technical capability evidence', 'Operations lead', 'Relevant references, CVs, equipment, method statements, quality/safety evidence.', 'High', 'Not started'),
-        ('Scope and quantity extraction', 'Estimator', 'Measured scope from BOQ/specifications/drawings; assumptions and exclusions log.', 'Critical', 'Not started'),
-        ('Pricing and commercial schedule', 'Estimator', 'Cost build-up, subcontractor quotes, overheads, risk allowance, final price schedule.', 'Critical', 'Not started'),
-        ('Programme and site methodology', 'Project manager', 'Delivery timeline, phasing, access, occupied-building constraints, mobilisation plan.', 'High', 'Not started'),
-        ('Health, safety, and environmental plan', 'HSE lead', 'Risk assessments, waste handling, site controls, permits, environmental requirements.', 'High', 'Not started'),
-        ('Submission portal and format check', 'Bid manager', 'Portal account, file naming, signatures, language, deadline, upload confirmation.', 'Critical', 'Not started'),
-        ('Human expert review', 'Director / reviewer', 'Final commercial, legal, and technical review before submission.', 'Critical', 'Not started'),
+        ('Official notice and tender documents', 'Bid manager', 'Download full tender pack, appendices, forms, drawings, and addenda.', 'Critical', 'Not started', f'TED Notice — {source_title}'),
+        ('Eligibility and exclusion grounds', 'Commercial lead', 'Company registration, tax/social declarations, exclusion/self-declaration forms.', 'Critical', 'Not started', assumption),
+        ('Technical capability evidence', 'Operations lead', 'Relevant references, CVs, equipment, method statements, quality/safety evidence.', 'High', 'Not started', assumption),
+        ('Scope and quantity extraction', 'Estimator', 'Measured scope from BOQ/specifications/drawings; assumptions and exclusions log.', 'Critical', 'Not started', assumption),
+        ('Pricing and commercial schedule', 'Estimator', 'Cost build-up, subcontractor quotes, overheads, risk allowance, final price schedule.', 'Critical', 'Not started', assumption),
+        ('Programme and site methodology', 'Project manager', 'Delivery timeline, phasing, access, occupied-building constraints, mobilisation plan.', 'High', 'Not started', assumption),
+        ('Health, safety, and environmental plan', 'HSE lead', 'Risk assessments, waste handling, site controls, permits, environmental requirements.', 'High', 'Not started', assumption),
+        ('Submission portal and format check', 'Bid manager', 'Portal account, file naming, signatures, language, deadline, upload confirmation.', 'Critical', 'Not started', assumption),
+        ('Human expert review', 'Director / reviewer', 'Final commercial, legal, and technical review before submission.', 'Critical', 'Not started', assumption),
     ]
     for trade in trades[:6]:
-        base_items.append((f'{trade} work package', 'Trade lead', f'Confirm scope, qualification evidence, quote request, availability, and interface risks for {trade}.', 'Medium', 'Not started'))
+        base_items.append((f'{trade} work package', 'Trade lead', f'Confirm scope, qualification evidence, quote request, availability, and interface risks for {trade}.', 'Medium', 'Not started', 'explicit assumption — trade identified from notice text'))
 
     items = []
-    for idx, (requirement, owner, evidence, priority, status) in enumerate(base_items, 1):
+    for idx, (requirement, owner, evidence, priority, status, source_ref) in enumerate(base_items, 1):
         items.append({
             'id': idx,
             'requirement': requirement,
@@ -220,6 +325,7 @@ def generate_compliance_matrix(lead: Dict) -> Dict:
             'evidence_needed': evidence,
             'priority': priority,
             'status': status,
+            'source_ref': source_ref,
         })
     return {
         'title': lead['short_title'],
@@ -231,6 +337,8 @@ def generate_compliance_matrix(lead: Dict) -> Dict:
         'disclaimer': 'First-pass ArchAgent matrix. Must be checked against the official tender documents before submission.',
         'risks': risks,
         'items': items,
+        'review_status': 'draft_generated',
+        'sources': sources,
     }
 
 
@@ -248,13 +356,17 @@ def compliance_matrix_markdown(matrix: Dict) -> str:
         '',
         '## Requirements',
         '',
-        '| # | Requirement | Owner | Evidence needed | Priority | Status |',
-        '|---|---|---|---|---|---|',
+        '| # | Requirement | Owner | Evidence needed | Priority | Status | Source / Assumption |',
+        '|---|---|---|---|---|---|---|',
     ]
     for item in matrix.get('items', []):
-        lines.append(f"| {item['id']} | {clean(item['requirement'])} | {clean(item['owner'])} | {clean(item['evidence_needed'])} | {clean(item['priority'])} | {clean(item['status'])} |")
+        src_ref = clean(item.get('source_ref', 'explicit assumption'))
+        lines.append(f"| {item['id']} | {clean(item['requirement'])} | {clean(item['owner'])} | {clean(item['evidence_needed'])} | {clean(item['priority'])} | {clean(item['status'])} | {src_ref} |")
     lines += ['', '## Risks to check', '']
     lines += [f"- {clean(r)}" for r in matrix.get('risks', [])]
+    lines += ['', source_register_markdown(matrix.get('sources', [])).rstrip()]
+    lines += ['', review_status_section(matrix.get('review_status', 'draft_generated')).rstrip()]
+    lines += ['', disclaimers_section().rstrip()]
     return '\n'.join(lines).strip() + '\n'
 
 

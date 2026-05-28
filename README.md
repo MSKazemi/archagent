@@ -25,6 +25,9 @@ This repository contains a working API-backed MVP:
 - `tender_document_collector.py` — Italy fit scoring and bid-readiness dossier generation.
 - `archagent_production_refresh.py` — backup + refresh + top dossier generation + regression wrapper.
 - `archagent_backup.py` — safe timestamped SQLite/export backups.
+- `archagent_maintenance.py` — SQLite integrity/optimize maintenance checks.
+- `healthcheck.py` — container/systemd healthcheck helper.
+- `Dockerfile` / `docker-compose.yml` — containerized local deployment option.
 - `DEPLOYMENT.md` — systemd, backups, HTTPS, and refresh operations guide.
 - `italy_market_report.py` — generates `ITALY_MARKET_REPORT.md` from local public-data DBs.
 - `seed_italy_profiles.py` — seeds Italy-specific lead-radar customer profiles.
@@ -49,6 +52,16 @@ Open:
 
 ```text
 http://127.0.0.1:8091/app
+```
+
+For Docker:
+
+```bash
+cd /opt/archagent
+cp .env.example .env
+# edit .env and set a long ARCHAGENT_TOKEN, or export ARCHAGENT_TOKEN in the shell
+export ARCHAGENT_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')
+docker compose up --build
 ```
 
 ## Run with private API token
@@ -80,6 +93,7 @@ cd /opt/archagent
 python3 smoke_test.py
 python3 production_regression_test.py
 python3 production_italy_test.py
+python3 archagent_maintenance.py
 ```
 
 Expected:
@@ -115,6 +129,7 @@ python3 italy_market_report.py
 python3 seed_italy_profiles.py
 python3 tender_document_collector.py --limit 5 --min-score 60
 python3 archagent_production_refresh.py --skip-workers --dossiers 5
+python3 archagent_maintenance.py
 ```
 
 ## Import public expert/worker listings

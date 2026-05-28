@@ -7,7 +7,7 @@ Type=simple
 WorkingDirectory=/opt/archagent
 EnvironmentFile=-/opt/archagent/.env
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python3 /opt/archagent/archagent_server.py --port 8091
+ExecStart=/usr/bin/python3 /opt/archagent/archagent_server.py --host 127.0.0.1 --port 8091
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
