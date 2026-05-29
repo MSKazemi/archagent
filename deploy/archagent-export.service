@@ -1,0 +1,9 @@
+[Unit]
+Description=ArchAgent weekly full data export (zip of every table, both DBs)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/archagent
+EnvironmentFile=-/opt/archagent/.env
+ExecStart=/usr/bin/python3 /opt/archagent/ops/export.py

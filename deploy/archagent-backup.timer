@@ -1,0 +1,11 @@
+[Unit]
+Description=ArchAgent daily database backup
+
+[Timer]
+# Daily at 02:00; runs an hour before the 06:30 refresh so a fresh backup exists first.
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+Unit=archagent-backup.service
+
+[Install]
+WantedBy=timers.target
