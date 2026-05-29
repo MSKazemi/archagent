@@ -1,0 +1,11 @@
+[Unit]
+Description=ArchAgent weekly full data export
+
+[Timer]
+# Weekly, Monday 03:00 (after the daily 02:00 backup). Export only — never purges.
+OnCalendar=Mon *-*-* 03:00:00
+Persistent=true
+Unit=archagent-export.service
+
+[Install]
+WantedBy=timers.target

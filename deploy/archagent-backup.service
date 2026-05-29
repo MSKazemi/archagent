@@ -1,0 +1,9 @@
+[Unit]
+Description=ArchAgent database backup (both DBs + exports, integrity-verified, pruned)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/archagent
+EnvironmentFile=-/opt/archagent/.env
+ExecStart=/usr/bin/python3 /opt/archagent/ops/backup.py --include-exports --keep 30

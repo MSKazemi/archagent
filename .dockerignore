@@ -10,4 +10,7 @@ __pycache__
 backups/
 exports/
 .claude/
+.playwright-mcp/
 .pytest_cache
+.vscode/
+.cursor/

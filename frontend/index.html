@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArchAgent — Italy Retrofit Tender Readiness Packs</title>
+  <meta name="description" content="ArchAgent prepares 48-hour bid/no-bid readiness packs for Italian retrofit, renovation, and public-construction tenders using official-source review, compliance checklists, risk flags, and partner gap analysis." />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
+  <script type="importmap">
+  { "imports": { "three": "/frontend/libs/three.module.js" } }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --ink: #061b31;
+      --text: #506078;
+      --label: #273951;
+      --muted: #f6f9fc;
+      --line: #e5edf5;
+      --purple: #533afd;
+      --purple-dark: #4434d4;
+      --purple-soft: #b9b9f9;
+      --dark: #1c1e54;
+      --ruby: #ea2261;
+      --magenta: #f96bee;
+      --green: #15be53;
+      --shadow: rgba(50,50,93,0.25) 0px 30px 45px -30px, rgba(0,0,0,0.1) 0px 18px 36px -18px;
+      --soft-shadow: rgba(23,23,23,0.08) 0px 15px 35px 0px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: 'Source Sans 3', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      font-feature-settings: "ss01";
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .shell {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(229,237,245,0.8);
+    }
+
+    .nav-inner {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: -0.2px;
+      font-size: 19px;
+    }
+
+    .mark {
+      width: 31px;
+      height: 31px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--purple), var(--ruby) 58%, var(--magenta));
+      position: relative;
+      box-shadow: rgba(83,58,253,0.26) 0 14px 24px -14px;
+    }
+
+    .mark::after {
+      content: "";
+      position: absolute;
+      inset: 8px 9px 7px;
+      border-left: 2px solid white;
+      border-top: 2px solid white;
+      transform: skew(-12deg);
+      opacity: 0.92;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      color: var(--label);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .nav-links a:hover { color: var(--purple); }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      border-radius: 4px;
+      padding: 9px 16px;
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 400;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .button:hover { transform: translateY(-1px); }
+    .button:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
+
+    .button.primary {
+      background: var(--purple);
+      color: white;
+      box-shadow: rgba(83,58,253,0.28) 0 16px 30px -18px;
+    }
+
+    .button.primary:hover { background: var(--purple-dark); }
+
+    .button.ghost {
+      color: var(--purple);
+      border-color: var(--purple-soft);
+      background: rgba(83,58,253,0.02);
+    }
+
+    .button.ghost:hover { background: rgba(83,58,253,0.06); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 92px 0 70px;
+      isolation: isolate;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: -140px;
+      right: -120px;
+      width: 580px;
+      height: 580px;
+      background: radial-gradient(circle at 35% 35%, rgba(249,107,238,0.22), transparent 36%), radial-gradient(circle at 58% 48%, rgba(83,58,253,0.22), transparent 45%);
+      filter: blur(2px);
+      z-index: -1;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
+      gap: 62px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--purple);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      margin-bottom: 18px;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 0 6px rgba(21,190,83,0.12);
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      font-size: clamp(44px, 6vw, 70px);
+      line-height: 0.98;
+      letter-spacing: -1.6px;
+      font-weight: 300;
+      color: var(--ink);
+      margin-bottom: 24px;
+      max-width: 760px;
+      text-wrap: pretty;
+    }
+
+    .hero-copy {
+      font-size: 20px;
+      line-height: 1.45;
+      color: var(--text);
+      font-weight: 300;
+      max-width: 610px;
+      margin-bottom: 30px;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 34px;
+    }
+
+    .trust-row {
+      display: flex;
+      gap: 22px;
+      flex-wrap: wrap;
+      color: var(--label);
+      font-size: 14px;
+    }
+
+    .trust-row span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .trust-row span::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 2px;
+      background: var(--purple);
+      opacity: 0.7;
+    }
+
+    .dashboard {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform: perspective(1200px) rotateY(-5deg) rotateX(3deg);
+    }
+
+    .dash-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #fbfdff);
+    }
+
+    .dots { display: flex; gap: 6px; }
+    .dots i { width: 9px; height: 9px; border-radius: 50%; background: #d9e3ef; display: block; }
+    .dots i:nth-child(1) { background: #ea2261; }
+    .dots i:nth-child(2) { background: #f1b84b; }
+    .dots i:nth-child(3) { background: #15be53; }
+
+    .dash-title {
+      font-family: 'Source Code Pro', monospace;
+      color: var(--label);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .dash-body { padding: 18px; }
+
+    .status-card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: #fff;
+    }
+
+    .status-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .status-head strong {
+      font-size: 18px;
+      font-weight: 400;
+      letter-spacing: -0.2px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 400;
+      border: 1px solid rgba(21,190,83,0.35);
+      color: #108c3d;
+      background: rgba(21,190,83,0.14);
+      white-space: nowrap;
+    }
+
+    .agent-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .agent-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      background: var(--muted);
+      border-radius: 5px;
+      color: var(--label);
+      font-size: 14px;
+    }
+
+    .agent-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, rgba(83,58,253,0.14), rgba(249,107,238,0.18));
+      display: grid;
+      place-items: center;
+      color: var(--purple);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .progress {
+      width: 72px;
+      height: 5px;
+      border-radius: 999px;
+      background: #e3e9f2;
+      overflow: hidden;
+    }
+
+    .progress b {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--purple), var(--magenta));
+    }
+
+    .plan-card {
+      background: var(--dark);
+      color: white;
+      border-radius: 6px;
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .plan-card::after {
+      content: "";
+      position: absolute;
+      width: 160px;
+      height: 160px;
+      right: -70px;
+      bottom: -80px;
+      background: radial-gradient(circle, rgba(249,107,238,0.36), transparent 68%);
+    }
+
+    .plan-card small {
+      color: rgba(255,255,255,0.62);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 11px;
+    }
+
+    .plan-card h3 {
+      font-size: 26px;
+      font-weight: 300;
+      letter-spacing: -0.26px;
+      margin: 8px 0 10px;
+    }
+
+    .plan-card p { color: rgba(255,255,255,0.70); margin: 0; line-height: 1.45; }
+
+    section { padding: 86px 0; }
+
+    .section-head {
+      max-width: 690px;
+      margin-bottom: 42px;
+    }
+
+    .section-head.center {
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: clamp(34px, 4.5vw, 50px);
+      line-height: 1.05;
+      letter-spacing: -1px;
+      font-weight: 300;
+      color: var(--ink);
+      margin-bottom: 16px;
+      text-wrap: pretty;
+    }
+
+    .section-head p {
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.45;
+      font-weight: 300;
+      margin-bottom: 0;
+    }
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .problem {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 22px;
+      min-height: 174px;
+      background: white;
+    }
+
+    .problem .num {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      color: var(--purple);
+      margin-bottom: 34px;
+      display: block;
+    }
+
+    .problem h3, .feature h3, .audience h3 {
+      font-size: 23px;
+      line-height: 1.12;
+      font-weight: 300;
+      letter-spacing: -0.24px;
+      margin-bottom: 10px;
+    }
+
+    .problem p, .feature p, .audience p {
+      color: var(--text);
+      line-height: 1.43;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    .dark-section {
+      background: var(--dark);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dark-section::before {
+      content: "";
+      position: absolute;
+      inset: auto -160px -260px auto;
+      width: 540px;
+      height: 540px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(83,58,253,0.5), transparent 62%);
+      opacity: 0.5;
+    }
+
+    .dark-section h2 { color: white; }
+    .dark-section .section-head p { color: rgba(255,255,255,0.68); }
+
+    .agents {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      position: relative;
+    }
+
+    .agent {
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.07);
+      padding: 19px;
+      min-height: 220px;
+    }
+
+    .agent code {
+      display: inline-flex;
+      font-family: 'Source Code Pro', monospace;
+      color: #ffd7ef;
+      font-size: 12px;
+      margin-bottom: 30px;
+    }
+
+    .agent h3 {
+      font-size: 21px;
+      line-height: 1.12;
+      font-weight: 300;
+      letter-spacing: -0.2px;
+      margin-bottom: 10px;
+      color: white;
+    }
+
+    .agent p {
+      color: rgba(255,255,255,0.66);
+      line-height: 1.45;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 24px;
+      background: #fff;
+      box-shadow: rgba(23,23,23,0.04) 0 10px 24px;
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 5px;
+      background: rgba(83,58,253,0.08);
+      color: var(--purple);
+      display: grid;
+      place-items: center;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 28px;
+    }
+
+    .engine-section {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border-top: 1px solid rgba(229,237,245,0.7);
+      border-bottom: 1px solid rgba(229,237,245,0.7);
+    }
+
+    .engine-grid {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 46px;
+      align-items: center;
+    }
+
+    .engine-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 26px;
+    }
+
+    .engine-panel h3 {
+      font-size: 30px;
+      font-weight: 300;
+      letter-spacing: -0.46px;
+      margin-bottom: 12px;
+    }
+
+    .engine-panel p {
+      color: var(--text);
+      line-height: 1.45;
+      font-weight: 300;
+      margin-bottom: 22px;
+    }
+
+    .engine-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      background: var(--muted);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--ink);
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 300;
+      letter-spacing: -0.22px;
+      margin-bottom: 7px;
+      font-feature-settings: "tnum";
+    }
+
+    .metric span {
+      display: block;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .pipeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pipeline-step {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 14px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 17px;
+      box-shadow: rgba(23,23,23,0.035) 0 8px 20px;
+    }
+
+    .pipeline-step span {
+      width: 42px;
+      height: 42px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      background: var(--dark);
+      color: white;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+    }
+
+    .pipeline-step h3 {
+      font-size: 21px;
+      font-weight: 300;
+      letter-spacing: -0.2px;
+      margin-bottom: 5px;
+    }
+
+    .pipeline-step p {
+      color: var(--text);
+      line-height: 1.4;
+      font-weight: 300;
+      margin: 0;
+    }
+
+
+    .mega-section {
+      background: #fff;
+    }
+
+    .mega-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .mega-card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 20px;
+      background: #fff;
+      min-height: 180px;
+      box-shadow: rgba(23,23,23,0.035) 0 8px 20px;
+    }
+
+    .mega-card b {
+      display: inline-flex;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      color: var(--purple);
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+
+    .mega-card h3 {
+      font-size: 22px;
+      line-height: 1.12;
+      font-weight: 300;
+      letter-spacing: -0.22px;
+      margin-bottom: 8px;
+    }
+
+    .mega-card p {
+      color: var(--text);
+      line-height: 1.4;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    .os-board {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .os-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 1fr;
+      border-top: 1px solid var(--line);
+    }
+
+    .os-row:first-child { border-top: 0; }
+
+    .os-cell {
+      padding: 17px;
+      border-left: 1px solid var(--line);
+      color: var(--text);
+      line-height: 1.38;
+      font-weight: 300;
+    }
+
+    .os-cell:first-child {
+      border-left: 0;
+      color: var(--ink);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--muted);
+    }
+
+    .jobs-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .job-chip {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 9px 12px;
+      background: #fff;
+      color: var(--label);
+      font-size: 14px;
+      box-shadow: rgba(23,23,23,0.03) 0 6px 16px;
+    }
+
+    .radar-section {
+      background: var(--dark);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .radar-section h2 { color: white; }
+    .radar-section .section-head p { color: rgba(255,255,255,0.68); }
+
+    .radar-grid {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .radar-panel, .source-card {
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.07);
+      padding: 22px;
+    }
+
+    .radar-panel h3, .source-card h3 {
+      color: white;
+      font-size: 25px;
+      font-weight: 300;
+      letter-spacing: -0.26px;
+      margin-bottom: 10px;
+    }
+
+    .radar-panel p, .source-card p {
+      color: rgba(255,255,255,0.68);
+      line-height: 1.45;
+      font-weight: 300;
+      margin: 0;
+    }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .source-card code {
+      display: inline-flex;
+      color: #ffd7ef;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .app-card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 22px;
+      background: #fff;
+      min-height: 205px;
+    }
+
+    .app-card h3 {
+      font-size: 23px;
+      font-weight: 300;
+      letter-spacing: -0.22px;
+      margin-bottom: 8px;
+    }
+
+    .app-card p {
+      color: var(--text);
+      line-height: 1.42;
+      font-weight: 300;
+      margin: 0 0 14px;
+    }
+
+    .app-card small {
+      color: var(--purple);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 11px;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 54px;
+      align-items: start;
+    }
+
+    .workflow-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      background: white;
+      position: sticky;
+      top: 104px;
+    }
+
+    .workflow-card h3 {
+      font-size: 30px;
+      font-weight: 300;
+      letter-spacing: -0.46px;
+      margin-bottom: 12px;
+    }
+
+    .workflow-card p { color: var(--text); line-height: 1.45; font-weight: 300; }
+
+    .brief-box {
+      margin-top: 24px;
+      border: 1px dashed #362baa;
+      border-radius: 6px;
+      padding: 16px;
+      background: #fbfbff;
+      color: var(--label);
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .steps { display: grid; gap: 13px; }
+
+    .step {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 16px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .step-number {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 13px;
+    }
+
+    .step h3 {
+      font-size: 22px;
+      font-weight: 300;
+      letter-spacing: -0.22px;
+      margin-bottom: 7px;
+    }
+
+    .step p {
+      color: var(--text);
+      line-height: 1.43;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    .audiences {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .audience {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 22px;
+      min-height: 190px;
+    }
+
+    .audience b {
+      display: inline-flex;
+      margin-bottom: 30px;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      color: var(--purple);
+      font-weight: 500;
+    }
+
+    .cta {
+      padding: 88px 0;
+      background: linear-gradient(135deg, #f8fbff, #ffffff 48%, #fbf8ff);
+    }
+
+    .cta-panel {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 36px;
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 34px;
+      align-items: start;
+    }
+
+    .cta-panel h2 { margin-bottom: 14px; }
+    .cta-panel p { color: var(--text); line-height: 1.45; font-size: 18px; font-weight: 300; }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--label);
+      font-weight: 400;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 12px 12px;
+      font: inherit;
+      color: var(--ink);
+      background: white;
+      min-height: 44px;
+    }
+
+    textarea { min-height: 112px; resize: vertical; }
+    .full { grid-column: 1 / -1; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid rgba(83,58,253,0.22); border-color: var(--purple); }
+
+    .form-note {
+      grid-column: 1 / -1;
+      color: var(--text);
+      font-size: 13px;
+      margin: 2px 0 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 30px 0;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid, .workflow, .engine-grid, .radar-grid, .cta-panel { grid-template-columns: 1fr; }
+      .dashboard { transform: none; }
+      .problem-grid, .audiences, .mega-grid, .app-grid, .source-list { grid-template-columns: repeat(2, 1fr); }
+      .agents { grid-template-columns: repeat(2, 1fr); }
+      .features { grid-template-columns: repeat(2, 1fr); }
+      .workflow-card { position: static; }
+      .nav-links a:not(.button) { display: none; }
+    }
+
+    @media (max-width: 640px) {
+      .shell { width: min(100% - 28px, 1120px); }
+      .hero { padding: 62px 0 42px; }
+      section { padding: 58px 0; }
+      .problem-grid, .agents, .features, .audiences, .mega-grid, .app-grid, .source-list, .engine-metrics, form { grid-template-columns: 1fr; }
+      .os-row { grid-template-columns: 1fr; }
+      .os-cell { border-left: 0; border-top: 1px solid var(--line); }
+      .os-cell:first-child { border-top: 0; }
+      .nav-inner { height: 64px; }
+      .button { width: 100%; }
+      .hero-actions { align-items: stretch; }
+      .nav-links .button { width: auto; }
+      h1 { font-size: 42px; letter-spacing: -0.9px; }
+      .cta-panel { padding: 22px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    }
+
+    /* ───────────────────────────────────────────────────────────────────────
+       VISUAL ELEVATION — 3D hero, photography, motion (overrides above)
+       ─────────────────────────────────────────────────────────────────────── */
+
+    /* Adaptive nav: dark glass over the hero, light glass once scrolled. */
+    .nav {
+      background: linear-gradient(180deg, rgba(10,14,39,0.96), rgba(10,14,39,0.82));
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      transition: background 280ms ease, border-color 280ms ease, box-shadow 280ms ease;
+    }
+    .nav .brand { color: #fff; }
+    .nav .mark { box-shadow: 0 14px 30px -10px rgba(83,58,253,0.7); }
+    .nav-links { color: rgba(255,255,255,0.82); }
+    .nav-links a:hover { color: #fff; }
+    .nav .button.primary {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.22);
+      backdrop-filter: blur(6px);
+    }
+    .nav .button.primary:hover { background: rgba(255,255,255,0.2); }
+    .nav.nav--solid {
+      background: rgba(255,255,255,0.86);
+      border-bottom-color: rgba(229,237,245,0.9);
+      box-shadow: rgba(20,26,58,0.06) 0 10px 30px -18px;
+    }
+    .nav--solid .brand { color: var(--ink); }
+    .nav--solid .nav-links { color: var(--label); }
+    .nav--solid .nav-links a:hover { color: var(--purple); }
+    .nav--solid .button.primary {
+      background: var(--purple);
+      border-color: transparent;
+      box-shadow: rgba(83,58,253,0.28) 0 16px 30px -18px;
+    }
+    .nav--solid .button.primary:hover { background: var(--purple-dark); }
+
+    /* Dark, dramatic hero with a live WebGL backdrop. */
+    .hero {
+      background:
+        radial-gradient(1100px 620px at 78% -8%, rgba(83,58,253,0.42), transparent 60%),
+        radial-gradient(820px 520px at 12% 16%, rgba(249,107,238,0.22), transparent 58%),
+        linear-gradient(168deg, #0a0e27 0%, #131a3e 52%, #1c1e54 100%);
+      color: #fff;
+      padding: 132px 0 104px;
+    }
+    .hero::before { display: none; } /* replaced by the canvas + gradients */
+
+    #hero-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 1200ms ease;
+      pointer-events: none;
+    }
+    #hero-canvas.is-live { opacity: 1; }
+    .hero::after { /* vignette so text stays legible over the canvas */
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: radial-gradient(900px 540px at 28% 42%, rgba(10,14,39,0.62), transparent 70%);
+      pointer-events: none;
+    }
+    .hero-grid { position: relative; z-index: 2; }
+
+    .hero h1 { color: #fff; font-weight: 300; }
+    .hero h1 .accent {
+      background: linear-gradient(96deg, #b9a9ff, #f96bee 60%, #ff9ad6);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+    }
+    .hero .hero-copy { color: rgba(233,237,255,0.82); }
+    .hero .eyebrow { color: #cabcff; }
+    .hero .pulse { box-shadow: 0 0 0 6px rgba(21,190,83,0.18); }
+    .hero .trust-row { color: rgba(233,237,255,0.74); }
+    .hero .trust-row span::before { background: var(--magenta); opacity: 0.95; }
+    .hero .button.ghost {
+      color: #fff;
+      border-color: rgba(255,255,255,0.28);
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(6px);
+    }
+    .hero .button.ghost:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.5); }
+    .hero .button.primary {
+      background: linear-gradient(96deg, var(--purple), var(--ruby));
+      box-shadow: rgba(83,58,253,0.5) 0 20px 44px -18px;
+    }
+
+    /* Floating, glassy dashboard card on the dark hero. */
+    .dashboard {
+      transform: perspective(1400px) rotateY(-7deg) rotateX(4deg);
+      box-shadow: rgba(8,11,33,0.6) 0 50px 90px -40px, rgba(83,58,253,0.28) 0 30px 60px -40px;
+      will-change: transform;
+    }
+
+    /* Photographic section bands (decorative, dark-tinted for contrast). */
+    .photo-band { position: relative; isolation: isolate; }
+    .photo-band > .shell { position: relative; z-index: 2; }
+    .photo-band .photo-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0.9;
+    }
+    .dark-section.photo-band::before { display: none; }
+    .dark-section .photo-layer::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(150deg, rgba(13,16,46,0.92), rgba(28,30,84,0.82) 60%, rgba(83,58,253,0.45));
+    }
+
+    /* "Proof" gets a light, photographic feature card. */
+    .proof-photo {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      position: relative;
+      min-height: 230px;
+      display: grid;
+      align-items: end;
+      background-size: cover;
+      background-position: center;
+    }
+    .proof-photo::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(6,27,49,0.05) 30%, rgba(6,27,49,0.78));
+    }
+    .proof-photo .caption {
+      position: relative; z-index: 2;
+      padding: 22px 24px;
+      color: #fff;
+      font-weight: 300;
+      font-size: 17px;
+      max-width: 560px;
+      line-height: 1.4;
+    }
+    .proof-photo .caption b { font-weight: 600; }
+
+    /* Card photo thumbnails. */
+    .card-photo {
+      width: 100%;
+      height: 132px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      display: block;
+      background: var(--muted);
+    }
+
+    /* SVG glyphs sit inside existing icon slots. */
+    .feature-icon svg, .agent-icon svg, .pipeline-step span svg { width: 60%; height: 60%; }
+    .glyph {
+      display: grid; place-items: center;
+      width: 44px; height: 44px;
+      border-radius: 9px;
+      margin-bottom: 22px;
+      background: linear-gradient(135deg, rgba(83,58,253,0.12), rgba(249,107,238,0.16));
+      color: var(--purple);
+      border: 1px solid rgba(83,58,253,0.14);
+    }
+    .dark-section .glyph {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.16);
+      color: #ffd7ef;
+    }
+    .glyph svg { width: 24px; height: 24px; }
+    .agent .glyph { margin-bottom: 16px; }
+    .agent code { margin-bottom: 12px; }
+
+    /* Decorative blueprint motif behind dark sections. */
+    .blueprint-deco {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.5;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Scroll-reveal (added by JS only; absent if JS/observer unavailable). */
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity 720ms cubic-bezier(.2,.7,.2,1), transform 720ms cubic-bezier(.2,.7,.2,1); }
+    .reveal.in-view { opacity: 1; transform: none; }
+    .reveal.d1 { transition-delay: 70ms; }
+    .reveal.d2 { transition-delay: 140ms; }
+    .reveal.d3 { transition-delay: 210ms; }
+    .reveal.d4 { transition-delay: 280ms; }
+
+    @media (max-width: 980px) {
+      .dashboard { transform: none; }
+      .hero { padding: 108px 0 72px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #hero-canvas { transition: none; }
+      .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav" aria-label="Primary navigation">
+    <div class="shell nav-inner">
+      <a href="#top" class="brand" aria-label="ArchAgent home"><span class="mark"></span> ArchAgent</a>
+      <div class="nav-links">
+        <a href="#offer">Offer</a>
+        <a href="#process">Process</a>
+        <a href="#proof">Proof</a>
+        <a href="#pricing">Pilot options</a>
+        <a href="/app">Client workspace</a>
+        <a href="#contact" class="button primary">Request pilot</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <header class="hero">
+      <canvas id="hero-canvas" aria-hidden="true"></canvas>
+      <div class="shell hero-grid">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> Italy retrofit tender intelligence</div>
+          <h1>Bid/no-bid <span class="accent">readiness packs</span> for Italian building retrofit and public construction tenders.</h1>
+          <p class="hero-copy">ArchAgent helps architecture studios, contractors, and retrofit teams decide quickly which public opportunities are worth pursuing. We turn official tender signals into a practical 48-hour readiness pack: source summary, deadline risk, document checklist, first-pass compliance matrix, partner gaps, and next actions.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="#contact">Request a 48-hour pack</a>
+            <a class="button ghost" href="#pricing">See pilot options</a>
+            <a class="button ghost" href="/app">Open private workspace</a>
+          </div>
+          <div class="trust-row" aria-label="Service scope">
+            <span>Official-source review</span>
+            <span>Bid/no-bid checklist</span>
+            <span>Compliance matrix</span>
+            <span>Human review required</span>
+          </div>
+        </div>
+
+        <div class="dashboard" aria-label="ArchAgent service preview">
+          <div class="dash-top">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="dash-title">TENDER READINESS PACK / 48 HOURS</div>
+          </div>
+          <div class="dash-body">
+            <div class="status-card">
+              <div class="status-head">
+                <strong>Decision pack prepared for review</strong>
+                <span class="badge">48-hour review</span>
+              </div>
+              <div class="agent-list">
+                <div class="agent-row"><span class="agent-icon">01</span><span>Official notice summarized</span><span class="progress"><b style="width:92%"></b></span></div>
+                <div class="agent-row"><span class="agent-icon">02</span><span>Deadlines and eligibility flagged</span><span class="progress"><b style="width:82%"></b></span></div>
+                <div class="agent-row"><span class="agent-icon">03</span><span>Documents and partner gaps listed</span><span class="progress"><b style="width:74%"></b></span></div>
+                <div class="agent-row"><span class="agent-icon">04</span><span>Bid/no-bid recommendation drafted</span><span class="progress"><b style="width:68%"></b></span></div>
+              </div>
+            </div>
+            <div class="plan-card">
+              <small>DELIVERABLE</small>
+              <h3>Readable pack, not black-box advice</h3>
+              <p>Every output links back to public/official sources and is positioned as preparation support, not legal, engineering, or procurement advice.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section id="offer">
+      <div class="shell">
+        <div class="section-head">
+          <h2>One tender, one clear decision pack.</h2>
+          <p>For each opportunity, ArchAgent turns scattered procurement information into a structured readiness pack your team can review before spending days on a full bid.</p>
+        </div>
+        <div class="problem-grid">
+          <article class="problem"><span class="num">01</span><h3>Official-source summary</h3><p>Buyer, location, deadline, value when visible, lot structure, source links, and the practical meaning of the opportunity.</p></article>
+          <article class="problem"><span class="num">02</span><h3>Bid/no-bid checklist</h3><p>Fast triage of urgency, fit, missing evidence, tender-language risk, portal/submission risk, and next information needed.</p></article>
+          <article class="problem"><span class="num">03</span><h3>Compliance matrix</h3><p>First-pass matrix for required documents, certificates, site constraints, guarantees, clarifications, and review questions.</p></article>
+          <article class="problem"><span class="num">04</span><h3>Partner gap list</h3><p>Trades, specialists, suppliers, or local partners likely needed before the customer spends time on a full bid.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="dark-section photo-band" id="process">
+      <div class="photo-layer" style="background-image:url('https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&amp;fit=crop&amp;w=1600&amp;q=70')"></div>
+      <div class="shell">
+        <div class="section-head center">
+          <h2>How the 48-hour service works.</h2>
+          <p>A practical service workflow for teams that need a fast, source-linked view of bid fit, risks, missing documents, and next actions.</p>
+        </div>
+        <div class="agents">
+          <article class="agent"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg></span><code>step.01</code><h3>Share the opportunity</h3><p>Send one tender notice, CPV segment, target region, or active opportunity your team is considering.</p></article>
+          <article class="agent"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg></span><code>step.02</code><h3>We verify public sources</h3><p>ArchAgent checks the official notice, deadlines, buyer, visible value, geography, and available documents.</p></article>
+          <article class="agent"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/></svg></span><code>step.03</code><h3>We prepare the pack</h3><p>The output includes a readable summary, checklist, compliance matrix, review questions, gaps, and recommended next action.</p></article>
+          <article class="agent"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/></svg></span><code>step.04</code><h3>Human review before use</h3><p>The pack is decision support. Eligibility, legal obligations, technical requirements, and final submission remain human-reviewed.</p></article>
+          <article class="agent"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16"/><path d="M20 20v-4h-4"/></svg></span><code>step.05</code><h3>Continue only if useful</h3><p>If the tender is worth pursuing, ArchAgent can support partner shortlists, clarification questions, or recurring tender monitoring.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="proof">
+      <div class="shell">
+        <div class="section-head">
+          <h2>Built around traceable sources and clear boundaries.</h2>
+          <p>ArchAgent focuses on decision preparation: public-source review, structured checklists, risk flags, and human-readable exports. It does not replace official tender documents, qualified legal/procurement advice, or your final technical judgment.</p>
+        </div>
+        <div class="features">
+          <article class="feature"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.4"/><path d="M12 12 18.5 8"/></svg></span><h3>Public tender radar</h3><p>Active lead records from public procurement sources with source links, categories, deadlines, countries, buyers, and visible values.</p></article>
+          <article class="feature"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><h3>Italy-focused prioritization</h3><p>Retrofit and public-construction opportunities are organized by relevance, deadline pressure, visible value, and fit for the target team.</p></article>
+          <article class="feature"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h7"/></svg></span><h3>Bid-readiness dossiers</h3><p>Readable exports summarize tender fit, risks, required checks, clarification questions, and next actions.</p></article>
+          <article class="feature"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="9" r="3"/><circle cx="16" cy="10" r="2.4"/><path d="M3.5 19c0-2.8 2.2-4.5 5-4.5s5 1.7 5 4.5"/><path d="M14.5 19c0-1.9.9-3.2 2.4-3.8"/></svg></span><h3>Partner research boundary</h3><p>Public business listings can identify possible partners, while any supplier or subcontractor recommendation remains subject to direct verification.</p></article>
+          <article class="feature"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 5.5l1.3 1.3L7 4.6"/><path d="M3.5 11.5l1.3 1.3L7 10.6"/><path d="M3.5 17.5l1.3 1.3L7 16.6"/></svg></span><h3>Review-ready workflow</h3><p>Outputs are written for project, commercial, and procurement review calls instead of vague automation claims.</p></article>
+          <article class="feature"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 8.3-7 9.5-4-1.2-7-5.1-7-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg></span><h3>Clear safety boundary</h3><p>Every pack includes a reminder that official documents, eligibility, pricing, and submission rules need expert/human review.</p></article>
+          <div class="proof-photo" role="img" aria-label="Architectural detail of a modern building facade" style="background-image:url('https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&amp;fit=crop&amp;w=1600&amp;q=72')">
+            <p class="caption"><b>Built for real procurement teams.</b> Every readiness pack links back to official sources and is framed as decision support — never black-box advice.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mega-section" id="pricing">
+      <div class="shell cta-panel">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> Pilot options</div>
+          <h2>Select the level of support your tender pipeline needs.</h2>
+          <p>Use ArchAgent for a single urgent tender review, recurring Italy retrofit monitoring, partner qualification, or ongoing bid-operations support.</p>
+        </div>
+        <div class="steps">
+          <article class="step"><span class="step-number">€500+</span><div><h3>48-hour readiness pack</h3><p>One tender summarized with bid/no-bid checklist, compliance matrix, risks, gaps, and recommended next action.</p></div></article>
+          <article class="step"><span class="step-number">€300+</span><div><h3>Weekly Italy tender radar</h3><p>Filtered list of relevant opportunities with deadlines, source links, and top recommendations.</p></div></article>
+          <article class="step"><span class="step-number">€1k+</span><div><h3>Partner verification sprint</h3><p>Research and qualify candidate subcontractors, specialists, or suppliers for a selected opportunity.</p></div></article>
+          <article class="step"><span class="step-number">€2k+</span><div><h3>Bid ops retainer</h3><p>Ongoing radar, readiness packs, partner research, and bid pipeline tracking for a small team.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" id="contact">
+      <div class="shell cta-panel">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> Request pilot</div>
+          <h2>Send one tender and we will prepare the decision pack.</h2>
+          <p>Share the tender link, deadline, location, and the decision you need to make. ArchAgent will use that brief to scope the readiness pack and confirm the next step.</p>
+        </div>
+        <form id="pilotForm" onsubmit="submitPilotRequest(event)">
+          <label>Name<input required name="name" placeholder="Your name" /></label>
+          <label>Email<input required type="email" name="email" placeholder="you@example.com" /></label>
+          <label>Company<input name="company" placeholder="Company / studio" /></label>
+          <label>Country<input name="country" placeholder="Italy / EU region" /></label>
+          <label>Service<select name="service"><option>48-hour readiness pack</option><option>Weekly Italy tender radar</option><option>Partner verification sprint</option><option>Bid ops retainer</option></select></label>
+          <label>Tender deadline<input name="tender_deadline" placeholder="YYYY-MM-DD if known" /></label>
+          <label class="full">Tender link or brief<textarea name="brief" placeholder="Paste the official notice link, buyer, location, trade/category, deadline, and what decision you need help with."></textarea></label>
+          <button class="button primary full" type="submit" id="pilotSubmitBtn">Prepare readiness request</button>
+          <p class="form-note" id="formStatus">ArchAgent will review the tender brief and confirm whether a 48-hour readiness pack is appropriate.</p>
+        </form>
+        <script>
+        async function submitPilotRequest(e) {
+          e.preventDefault();
+          const btn = document.getElementById('pilotSubmitBtn');
+          const status = document.getElementById('formStatus');
+          const fd = new FormData(e.target);
+          const payload = Object.fromEntries(fd.entries());
+          btn.disabled = true; btn.textContent = 'Sending…';
+          try {
+            const r = await fetch('/api/pilot-request', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify(payload),
+            });
+            if (r.ok) {
+              status.style.color = '#2d7d46';
+              status.textContent = 'Thanks. Your brief is received — the ArchAgent team will be in touch within 24 hours.';
+              e.target.reset();
+            } else {
+              const err = await r.json().catch(() => ({}));
+              status.style.color = '#c0392b';
+              status.textContent = 'Submission failed: ' + (err.error || r.status);
+            }
+          } catch (ex) {
+            status.style.color = '#c0392b';
+            status.textContent = 'Network error — please email us directly.';
+          } finally {
+            btn.disabled = false; btn.textContent = 'Prepare readiness request';
+          }
+        }
+        </script>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner">
+      <span>© 2026 ArchAgent. Italy retrofit tender intelligence. <span style="opacity:0.6">Photography: Unsplash.</span></span>
+      <span>Decision-support only: official tender documents, eligibility, technical requirements, pricing, and submissions require qualified human review.</span>
+    </div>
+  </footer>
+
+  <!-- Adaptive nav + scroll-reveal (plain script — runs even if the 3D module fails) -->
+  <script>
+  (function () {
+    var nav = document.querySelector('.nav');
+    function onScroll() {
+      if (window.scrollY > 60) nav.classList.add('nav--solid');
+      else nav.classList.remove('nav--solid');
+    }
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduce && 'IntersectionObserver' in window) {
+      var sel = '.section-head, .problem, .feature, .agent, .step, .mega-card, ' +
+                '.pipeline-step, .app-card, .audience, .source-card, .proof-photo, .metric';
+      var targets = document.querySelectorAll(sel);
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) { en.target.classList.add('in-view'); io.unobserve(en.target); }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -7% 0px' });
+      targets.forEach(function (el, i) {
+        el.classList.add('reveal', 'd' + ((i % 4) + 1));
+        io.observe(el);
+      });
+    }
+  })();
+  </script>
+
+  <!-- Interactive WebGL hero — self-hosted Three.js, degrades gracefully -->
+  <script type="module">
+  import * as THREE from 'three';
+
+  const canvas = document.getElementById('hero-canvas');
+  const hero = document.querySelector('.hero');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function webglSupported() {
+    try {
+      const c = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext &&
+        (c.getContext('webgl') || c.getContext('experimental-webgl')));
+    } catch (e) { return false; }
+  }
+
+  if (canvas && hero && webglSupported()) {
+    try { initHero(); } catch (e) { /* keep the static gradient hero */ }
+  }
+
+  function initHero() {
+    const renderer = new THREE.WebGLRenderer({
+      canvas, alpha: true, antialias: true, powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 120);
+    camera.position.set(0, 2.4, 13);
+
+    const world = new THREE.Group();
+    world.rotation.x = 0.12;
+    scene.add(world);
+
+    // Abstract wireframe "city" of extruded blueprint towers.
+    const city = new THREE.Group();
+    const palette = [0x6f5cff, 0x533afd, 0xf96bee, 0x8a7bff, 0xb9a9ff];
+    const cols = 6, rows = 6, gap = 1.75;
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        if (Math.random() < 0.18) continue; // irregular skyline
+        const h = 0.6 + Math.random() * 4.6;
+        const w = 0.68 + Math.random() * 0.5;
+        const box = new THREE.BoxGeometry(w, h, w);
+        const edges = new THREE.EdgesGeometry(box);
+        const mat = new THREE.LineBasicMaterial({
+          color: palette[(i + j) % palette.length],
+          transparent: true,
+          opacity: 0.45 + Math.random() * 0.45,
+          blending: THREE.AdditiveBlending,
+        });
+        const tower = new THREE.LineSegments(edges, mat);
+        tower.position.set((i - (cols - 1) / 2) * gap, h / 2 - 1.2, (j - (rows - 1) / 2) * gap);
+        city.add(tower);
+        box.dispose();
+      }
+    }
+    world.add(city);
+
+    // Ground reference grid.
+    const grid = new THREE.GridHelper(cols * gap + 3, 24, 0x6f5cff, 0x2a2f66);
+    grid.material.transparent = true;
+    grid.material.opacity = 0.2;
+    grid.position.y = -1.25;
+    world.add(grid);
+
+    // Floating particle field for depth.
+    const pCount = 850;
+    const pGeo = new THREE.BufferGeometry();
+    const pos = new Float32Array(pCount * 3);
+    for (let i = 0; i < pCount; i++) {
+      pos[i * 3]     = (Math.random() - 0.5) * 28;
+      pos[i * 3 + 1] = Math.random() * 13 - 2.5;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 28;
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const points = new THREE.Points(pGeo, new THREE.PointsMaterial({
+      color: 0xc9bcff, size: 0.05, transparent: true, opacity: 0.7,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    world.add(points);
+
+    const isTouch = window.matchMedia('(hover: none)').matches;
+    const target = new THREE.Vector2(0, 0);
+    const cur = new THREE.Vector2(0, 0);
+
+    function onPointer(e) {
+      const r = hero.getBoundingClientRect();
+      target.x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      target.y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    }
+    if (!isTouch) window.addEventListener('pointermove', onPointer, { passive: true });
+
+    function resize() {
+      const w = hero.clientWidth, h = hero.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / Math.max(h, 1);
+      camera.updateProjectionMatrix();
+    }
+    resize();
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(resize, 150);
+    }, { passive: true });
+
+    function draw(elapsed) {
+      city.rotation.y = elapsed * 0.06;
+      if (isTouch) world.rotation.y = elapsed * 0.07;
+      points.rotation.y = -elapsed * 0.02;
+      cur.x += (target.x - cur.x) * 0.05;
+      cur.y += (target.y - cur.y) * 0.05;
+      camera.position.x = cur.x * 2.4;
+      camera.position.y = 2.4 - cur.y * 1.2;
+      camera.lookAt(0, 0.4, 0);
+      renderer.render(scene, camera);
+    }
+
+    // Reduced motion: one static frame, no loop.
+    if (reduceMotion) {
+      camera.position.set(2.2, 2.6, 13);
+      camera.lookAt(0, 0.4, 0);
+      renderer.render(scene, camera);
+      canvas.classList.add('is-live');
+      return;
+    }
+
+    const clock = new THREE.Clock();
+    let elapsed = 0, raf = 0, running = false;
+    function loop() {
+      elapsed += clock.getDelta();
+      draw(elapsed);
+      raf = requestAnimationFrame(loop);
+    }
+    function start() { if (running) return; running = true; clock.start(); raf = requestAnimationFrame(loop); }
+    function stop()  { if (!running) return; running = false; clock.stop(); cancelAnimationFrame(raf); }
+
+    draw(0);
+    requestAnimationFrame(() => canvas.classList.add('is-live'));
+
+    // Pause when the hero scrolls offscreen.
+    let onScreen = true;
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver((entries) => {
+        onScreen = entries[0].isIntersecting;
+        if (onScreen && !document.hidden) start(); else stop();
+      }, { threshold: 0 }).observe(hero);
+    } else { start(); }
+
+    // Pause when the tab is hidden.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop(); else if (onScreen) start();
+    });
+
+    start();
+  }
+  </script>
+</body>
+</html>
