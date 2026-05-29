@@ -41,6 +41,10 @@ Medium priority (deepen the domain):
 6. **Soccorso istruttorio classifier** — flag whether a given defect is formal (recoverable) vs. substantive (exclusion).
 7. **PNRR obligations module** — DNSH clauses, youth/female-quota premiality, reinforced traceability.
 
+Operational / security (deferred from the 2026-05-29 close):
+8. **Security hardening** — rotate the dev `admin/admin` credentials; add backup encryption + off-site copy (S3/rsync). Backups are local-disk only today.
+9. **Configure a git remote + push** — no `origin` is set; releases are committed/tagged locally only.
+
 ## Quality bar
 - Pure stdlib; no runtime dependencies. Every procurement rule must cite a source.
 - `intelligence/*` domain logic stays I/O-free and deterministic.
