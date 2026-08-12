@@ -193,9 +193,14 @@ All 52 SOA categories (OG1–OG13, OS1–OS35) plus the classifica value bands.
 
 ## Screenshots
 
-> Every screenshot below shows **fabricated demo data**. No real procurement leads, buyers,
-> or business contacts ship with this repository or appear in these images — the buyers
-> ("Comune di Valdirosa", "ATER Provincia di Selvana") and the partner listings are invented.
+> Everything below shows **fabricated demo data** seeded with `ops/seed_demo.py`. No real
+> procurement leads, buyers, or business contacts ship with this repository or appear in
+> these images — the buyers ("Comune di Valdirosa", "ATER Provincia di Selvana") and the
+> partner listings are invented.
+
+**Walkthrough** — Overview → Lead Radar → Italy Market → Partner research.
+
+![Walking through the ArchAgent workspace: overview, lead radar, Italy market, partner research](docs/assets/walkthrough.gif)
 
 **Italy Market Command Center** — qualified opportunities ranked by fit score, with the
 matching offer and a one-click bid-readiness dossier per lead.
