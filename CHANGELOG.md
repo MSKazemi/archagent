@@ -2,6 +2,34 @@
 
 All notable changes to ArchAgent / BuildingOS. Pure Python 3 stdlib; zero runtime deps.
 
+## [Unreleased] — public-release preparation
+
+### Removed (breaking for existing clones)
+- **The three SQLite databases are no longer tracked** and have been purged from the whole git
+  history. They are runtime data, not source: they held real procurement leads, 1100 scraped
+  business contact records, a password hash, and live session tokens. `*.sqlite3` is now
+  gitignored.
+- **`exports/` is no longer tracked** and has been purged from history — generated dossiers,
+  compliance matrices, and outreach emails naming real buyers and tenders.
+- Internal commercial documents (`docs/BUILDINGOS_STRATEGY.md`, `docs/BUILDINGOS_PLAYBOOK.md`)
+  removed from the repository and its history.
+- Stale root `healthcheck.py` (superseded by `ops/healthcheck.py`).
+
+### Added
+- `core.db.init_leads_db()` — creates the leads-database schema if absent, called at server
+  startup alongside `init_app_db()`. A fresh clone is runnable with no data files present;
+  populate with `ops/refresh.py`.
+
+### Changed
+- README rewritten for the current package layout (it still documented the pre-restructure
+  flat file list) and for the no-data-ships model.
+- Deployment paths in README, `docs/`, and `deploy/*.service` genericized to `/opt/archagent`.
+- Roadmap and Phase-2 release notes no longer attribute the internal design review to a named
+  persona — it was a simulated reviewer, not a real person.
+- `Dockerfile` healthcheck now points at `ops/healthcheck.py`; `.dockerignore` also excludes
+  `data/`.
+- File modes normalized: only scripts with a shebang are executable.
+
 ## [0.5.0] — 2026-05-29
 
 ### Added

@@ -28,9 +28,9 @@ Italian public-works tender intelligence. Pure Python 3 standard library (zero r
 - **5 improvements:** compliance.py (additive procurement keys, legacy contract preserved); proposals matrix (Italy leads get the real document waterfall with legal citations, not 15 generic rows); proposals (sales pitch/pricing stripped from buyer-facing docs); dossiers.py (procurement-intelligence section); scoring.py (PNRR boost + broader Italian terms).
 - Tests: `tests/test_procurement.py` (36 tests).
 
-## Next — Phase 3 candidates (prioritized from research + an internal simulated-expert design review)
+## Next — Phase 3 candidates (prioritized from domain research + an internal simulated-expert design review)
 
-High priority (close the credibility gaps the CTO review flagged):
+High priority (close the credibility gaps that review flagged):
 1. **Auto-fetch + auto-analyze** — when a lead is flagged, auto-download TED/ANAC attachments and run the analyst pipeline. No manual PDF upload. *(review finding #1 — not yet done.)*
 2. **Real partner verification** — replace the unverified OSM scrape with SOA-qualified, geography-filtered subcontractors; never show out-of-region listings (no Dublin contractors for Italian PNRR work). *(review finding #3.)*
 3. **Frontend surfacing of Phase 2** — expose SOA catalog, `analyze-text`, cauzioni, go/no-go, and the document waterfall in the app + admin UI (currently API-only).

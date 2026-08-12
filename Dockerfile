@@ -18,6 +18,6 @@ USER archagent
 EXPOSE 8091
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python3 /app/healthcheck.py
+  CMD python3 /app/ops/healthcheck.py
 
 CMD ["python3", "archagent_server.py"]

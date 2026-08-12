@@ -52,6 +52,19 @@ def rows_to_dicts(rows) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def init_leads_db() -> None:
+    """Create the leads database (schema only) if it does not exist yet.
+
+    The leads DB is *data*, not source: it is never committed and is rebuilt by
+    the TED ingestion (`ops/refresh.py`). This makes a fresh clone runnable —
+    every read path finds the tables, just with zero rows, until a refresh runs.
+    Imported lazily to keep `core` free of `ingestion` imports at module load.
+    """
+    from archagent.ingestion.ted import init_db as _init_leads
+
+    _init_leads(LEADS_DB).close()
+
+
 def init_app_db() -> None:
     con = app_conn()
     con.executescript("""

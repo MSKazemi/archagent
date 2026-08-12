@@ -22,7 +22,7 @@ sys.path.insert(0, str(BASE))
 # Isolate the database BEFORE importing archagent modules.
 _TMP = Path(tempfile.mkdtemp())
 os.environ['ARCHAGENT_APP_DB'] = str(_TMP / 'app.sqlite3')
-os.environ['ARCHAGENT_LEADS_DB'] = str(BASE / 'archagent_actionable_projects.sqlite3')
+os.environ['ARCHAGENT_LEADS_DB'] = str(_TMP / 'leads.sqlite3')  # schema-only, built by init_leads_db()
 
 from archagent.core import db, passwords, rbac, auth_db, sessions  # noqa: E402
 from archagent.core.migrations import run_migrations  # noqa: E402
@@ -73,6 +73,7 @@ def unit_tests():
 
     # migrations idempotency
     db.init_app_db()
+    db.init_leads_db()
     con = db.app_conn()
     try:
         v1 = sorted(r[0] for r in con.execute('SELECT version FROM schema_migrations'))

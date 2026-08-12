@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlparse
 
 from archagent.core import config
 from archagent.core.config import BASE, LEADS_DB, PUBLIC_PATHS
-from archagent.core.db import app_conn, app_cursor, init_app_db, now, rows_to_dicts
+from archagent.core.db import app_conn, app_cursor, init_app_db, init_leads_db, now, rows_to_dicts
 from archagent.core.rbac import has_permission, permission_for_route
 from archagent.api import auth
 from archagent.api import errors
@@ -509,6 +509,7 @@ def main():
     args = parser.parse_args()
     validate_token_config(args.host)
     init_app_db()
+    init_leads_db()
     os.chdir(BASE)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.daemon_threads = True

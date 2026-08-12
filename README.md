@@ -1,202 +1,146 @@
 # ArchAgent / BuildingOS
 
-Production-oriented local MVP for architecture, renovation, construction, painting, facade, insulation, HVAC, energy retrofit, proposal generation, and contractor/expert matching workflows.
+Italian and EU public-works tender intelligence: ingest public procurement notices,
+score them for fit, and generate bid-readiness dossiers, compliance matrices, and
+proposal drafts.
 
-## Current status
+**Pure Python 3 standard library — zero runtime dependencies.** Runs anywhere Python
+3.9+ is installed.
 
-This repository contains a working API-backed MVP:
+## What it does
 
-- Real public procurement lead radar from TED/EU data.
-- SQLite lead and application databases.
-- Customer/founder web app at `/app`.
-- Proposal, compliance matrix, dossier, outreach, CRM follow-up, and building audit generation.
-- Public unverified expert/worker/supplier listings from OpenStreetMap/Overpass.
-- Token-protected API mode for private hosted deployments.
+- **Lead radar** — ingests public procurement notices from the TED/EU Search API.
+- **Italy fit scoring** — keyword/term scoring tuned for Italian public works, with a PNRR boost.
+- **Italian procurement intelligence** — deterministic encoding of D.Lgs 36/2023: SOA category
+  catalog (OG1–13, OS1–35), CIG extraction/validation, SOA class inference, cauzione
+  provvisoria/definitiva, document waterfall with legal citations, PNRR tagging, deadline
+  urgency, go/no-go scoring. No LLM required.
+- **Document generation** — deterministic, template-based bid dossiers, compliance matrices,
+  outreach packs, CRM follow-ups, and building audits.
+- **AI tender analysis (optional)** — LLM analysis of tender PDFs via Azure OpenAI, with a
+  `pdftotext` / `pdftoppm`-vision fallback for scanned documents.
+- **Identity, RBAC and an admin plane** — PBKDF2 auth, DB-backed sessions, scoped API keys,
+  role-based route permissions, rate limiting, audit trail, backup/restore, data export,
+  retention purge — all stdlib.
 
-## Canonical files
+## No data ships with this repository
 
-- `archagent_server.py` — local HTTP API and app server.
-- `app.html` — API-backed BuildingOS portal.
-- `index.html` — marketing website.
-- `proposal_engine.py` — deterministic proposal/compliance/audit logic.
-- `project_finder.py` — TED lead ingestion.
-- `expert_worker_importer.py` — OSM/Overpass expert-worker importer.
-- `italy_refresh.py` — repeatable Italy refresh: TED leads, OSM listings, seeded profiles, report.
-- `tender_document_collector.py` — Italy fit scoring and bid-readiness dossier generation.
-- `archagent_production_refresh.py` — backup + refresh + top dossier generation + regression wrapper.
-- `archagent_backup.py` — safe timestamped SQLite/export backups.
-- `archagent_maintenance.py` — SQLite integrity/optimize maintenance checks.
-- `healthcheck.py` — container/systemd healthcheck helper.
-- `Dockerfile` / `docker-compose.yml` — containerized local deployment option.
-- `DEPLOYMENT.md` — systemd, backups, HTTPS, and refresh operations guide.
-- `italy_market_report.py` — generates `ITALY_MARKET_REPORT.md` from local public-data DBs.
-- `seed_italy_profiles.py` — seeds Italy-specific lead-radar customer profiles.
-- `smoke_test.py` — main end-to-end smoke test.
-- `production_regression_test.py` — production hardening regression test.
-- `production_italy_test.py` — Italy scoring/dossier/verification regression test.
+The SQLite databases are **runtime data, not source**, and are deliberately not committed:
+they hold real procurement leads, business contact details, and credentials. A fresh clone
+creates empty databases on first run; populate them yourself with `ops/refresh.py`.
 
-## Canonical databases
+The same applies to `exports/`, `backups/`, and `data/` — all generated, all gitignored.
 
-- `archagent_actionable_projects.sqlite3` is the canonical lead database used by the app.
-- `archagent_app.sqlite3` is the canonical application database for prospects, proposals, customer profiles, exports, workers, contractors, followups, and activities.
-- `archagent_projects.sqlite3` is legacy/parallel project-finder output and should not be used by new app code unless explicitly migrated.
-
-## Run locally
+## Quick start
 
 ```bash
-cd /opt/archagent
-python3 archagent_server.py --port 8091
+git clone <your-fork-url> archagent && cd archagent
+cp .env.example .env          # then edit: set a long ARCHAGENT_TOKEN
+python3 archagent_server.py --host 127.0.0.1 --port 8091
 ```
 
-Open:
+Open `http://127.0.0.1:8091/app` (or `/admin` for the admin console, `/` for the landing page).
+`.env` is loaded automatically at startup.
 
-```text
-http://127.0.0.1:8091/app
-```
-
-For Docker:
+Populate the lead database:
 
 ```bash
-cd /opt/archagent
+python3 ops/refresh_italy.py --skip-workers   # TED leads + profiles + market report
+python3 ops/refresh.py --skip-workers --dossiers 5   # backup → refresh → dossiers → tests
+```
+
+Docker:
+
+```bash
 cp .env.example .env
-# edit .env and set a long ARCHAGENT_TOKEN, or export ARCHAGENT_TOKEN in the shell
 export ARCHAGENT_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')
 docker compose up --build
 ```
 
-## Run with private API token
+## Authentication
+
+Two mechanisms, both optional for purely local use:
+
+- **User accounts** — set `ARCHAGENT_ADMIN_EMAIL` / `ARCHAGENT_ADMIN_PASSWORD` to seed the
+  first admin on first run, then `POST /api/auth/login` to get an `archagent_session` cookie.
+  Manage further users from the admin console.
+- **Legacy token** — `ARCHAGENT_TOKEN` authenticates as an admin-equivalent principal via
+  `X-ArchAgent-Token: <token>` or `Authorization: Bearer <token>`.
+
+`GET /api/health` is always public. With no users and no token configured, a local
+deployment falls back to an implicit admin for development convenience — never expose such
+a deployment to a network.
+
+**Do not expose this app publicly without** `ARCHAGENT_TOKEN` or seeded user accounts, HTTPS,
+backups, and a process supervisor. See `docs/DEPLOYMENT.md` for systemd, timer, and reverse
+proxy examples.
+
+## Layout
+
+```
+archagent/
+├── core/          config, db, migrations, passwords, rbac, auth_db, sessions, audit,
+│                  backup, maintenance
+├── ingestion/     ted.py (TED EU procurement), osm.py (OpenStreetMap Overpass)
+├── intelligence/  analyst.py (PDF/LLM), compliance.py, procurement.py (D.Lgs 36/2023),
+│                  scoring.py (Italy fit)
+├── generation/    proposals.py, dossiers.py
+├── markets/italy/ refresh.py, report.py
+└── api/           server.py, auth, errors, validation, ratelimit, metrics, pagination,
+                   handlers/ (one module per route group)
+
+archagent_server.py   entry-point shim
+ops/                  refresh, backup, export, maintenance, healthcheck, seeding
+frontend/             index.html (landing), app.html (portal), admin.html (admin console)
+deploy/               systemd service + timer units
+docs/                 deployment guide and reference notes
+tests/                self-contained test scripts
+```
+
+## Tests
+
+Each script is self-contained and prints a single `PASS ...` line on success.
 
 ```bash
-cd /opt/archagent
-ARCHAGENT_TOKEN='replace-with-long-random-token' python3 archagent_server.py --port 8091
+python3 tests/test_db.py           # schema creation, WAL mode
+python3 tests/test_admin.py        # identity/RBAC + admin plane (isolated temp DB)
+python3 tests/test_admin_data.py   # export/backup/restore plane
+python3 tests/test_procurement.py  # Italian procurement domain logic
+python3 tests/test_analyst.py      # analyst + compliance (mocked; integration needs Azure)
+python3 tests/test_maintenance.py  # maintenance helpers
+python3 tests/test_smoke.py        # end-to-end API test (starts a server on port 8092)
+python3 tests/test_regression.py   # auth, importer, customer profiles, radar exports
+python3 tests/test_italy.py        # Italy scoring, dossiers, summary, worker verification
+python3 ops/maintenance.py         # SQLite integrity check
 ```
 
-The browser app will prompt once for the token and stores it in `localStorage` as `archagent-token`.
+`test_smoke.py`, `test_regression.py`, and `test_italy.py` exercise a live server against the
+local databases; run a refresh first if you want them to see real leads.
 
-API clients can pass either:
+## Configuration
 
-```text
-X-ArchAgent-Token: replace-with-long-random-token
-Authorization: Bearer replace-with-long-random-token
-```
+See `.env.example` for the full, commented list. The essentials:
 
-Health check remains public:
+| Variable | Purpose |
+|---|---|
+| `ARCHAGENT_TOKEN` | Legacy admin-equivalent API token |
+| `ARCHAGENT_ADMIN_EMAIL` / `_PASSWORD` | Seeds the first admin user on first run |
+| `ARCHAGENT_APP_DB` / `ARCHAGENT_LEADS_DB` | Database path overrides |
+| `AZURE_OPENAI_*` | Required only for `POST /api/dossier/analyze` |
+| `SMTP_*` / `NOTIFY_EMAIL` | Optional email alerts for pilot requests |
 
-```bash
-curl http://127.0.0.1:8091/api/health
-```
+## Data provenance and limits
 
-## Test
+- Procurement notices come from the **TED EU Search API**; see the
+  [TED legal notice](https://ted.europa.eu/en/legal-notice) for reuse terms.
+- Expert/worker listings come from **OpenStreetMap** via Overpass and are imported as
+  `public_listing_unverified`. They are public business listings, **not vetted partners**,
+  and must never be presented as qualified until contacted and manually promoted. OSM data
+  is © OpenStreetMap contributors, [ODbL](https://www.openstreetmap.org/copyright).
+- Generated dossiers are **first-pass operating documents**. Official tender documents
+  require human review before any bid or client delivery.
 
-```bash
-cd /opt/archagent
-python3 smoke_test.py
-python3 production_regression_test.py
-python3 production_italy_test.py
-python3 archagent_maintenance.py
-```
+## Author
 
-Expected:
-
-```text
-PASS smoke: leads, proposal, compliance, export, prospect, follow-up, match, outreach, dossier, workers, audit
-PASS production regression: importer help, auth, customer profiles, lead radar exports
-PASS production Italy workflows: scoring, dossiers, summary, worker verification
-```
-
-## Refresh project leads
-
-```bash
-python3 project_finder.py --limit-per-search 50 --report-limit 50
-```
-
-This updates `archagent_actionable_projects.sqlite3`, `ACTIONABLE_PROJECTS.md`, `actionable_projects.csv`, and `actionable_projects.json`.
-
-## Refresh Italy market data
-
-```bash
-python3 italy_refresh.py
-```
-
-This refreshes Italy-focused TED leads, imports public OSM expert/worker/supplier listings for Rome, Milan, Turin, Naples, and Bologna, seeds Italy customer profiles, and regenerates `ITALY_MARKET_REPORT.md`.
-
-Faster variants:
-
-```bash
-python3 italy_refresh.py --skip-workers
-python3 italy_refresh.py --skip-tenders
-python3 italy_market_report.py
-python3 seed_italy_profiles.py
-python3 tender_document_collector.py --limit 5 --min-score 60
-python3 archagent_production_refresh.py --skip-workers --dossiers 5
-python3 archagent_maintenance.py
-```
-
-## Import public expert/worker listings
-
-List configured areas:
-
-```bash
-python3 expert_worker_importer.py --list-areas
-```
-
-Dry-run one city without writing the database:
-
-```bash
-python3 expert_worker_importer.py --areas Berlin --dry-run --sleep 0
-```
-
-Full import:
-
-```bash
-python3 expert_worker_importer.py
-```
-
-Important: OpenStreetMap/Overpass records are public unverified listings, not vetted partners. Do not claim they are qualified until contacted and verified.
-
-## Main API endpoints
-
-```text
-GET  /api/health
-GET  /api/stats
-GET  /api/italy/summary
-GET  /api/leads?q=&country=&category=&min_value=&sort=&limit=&offset=
-GET  /api/lead?id=<source_notice_id>
-GET  /api/customer-profiles
-POST /api/customer-profiles
-GET  /api/lead-radar/export?profile_id=&country=&category=&format=markdown|csv&limit=
-GET  /api/lead-radar/exports
-GET  /api/prospects
-POST /api/prospects
-GET  /api/followups
-POST /api/followups
-GET  /api/proposals
-POST /api/proposals
-POST /api/proposals/hermes
-GET  /api/proposals/export?id=<proposal_id>
-GET  /api/tender-dossiers
-POST /api/tender-dossiers
-POST /api/compliance
-POST /api/dossier
-GET  /api/contractors
-GET  /api/workers?q=&country=&type=&trade=&verification_status=&limit=&offset=
-GET  /api/workers/export?country=&type=&trade=&verification_status=&limit=&format=csv
-GET  /api/worker-stats
-GET  /api/worker-verifications
-POST /api/workers/verify
-POST /api/match
-POST /api/outreach
-POST /api/audit
-GET  /api/activities
-```
-
-## First commercial wedge
-
-Start with a narrow paid workflow:
-
-1. Customer profile: country, category, trade, capacity, notes.
-2. Weekly lead radar export: 10–30 relevant active opportunities.
-3. Bid package upsell: compliance matrix, proposal draft, partner outreach.
-4. Contractor verification: mark listings contacted/replied/qualified before matchmaking claims.
-
-Do not expose the app publicly without `ARCHAGENT_TOKEN`, HTTPS, backups, and a deployment supervisor. See `DEPLOYMENT.md` for systemd/timer/Caddy examples.
+Mohsen Seyedkazemi Ardebili — [mskazemi.github.io](https://mskazemi.github.io) ·
+[github.com/MSKazemi](https://github.com/MSKazemi)
