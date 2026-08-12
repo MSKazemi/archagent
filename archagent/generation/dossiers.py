@@ -133,7 +133,7 @@ def build_tender_dossier(notice_id: str, *, source: str = 'api', save: bool = Tr
     lead = dict(row)
     scored = score_italy_fit(lead)
     checklist = document_collection_checklist(lead)
-    generated = dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat()
+    generated = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
     source_url = clean(lead.get('source_url'))
     title = clean(lead.get('title'))
     official_links = extract_official_links(lead)

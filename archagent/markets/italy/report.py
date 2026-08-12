@@ -200,7 +200,7 @@ def main() -> int:
     lines = [
         "# ArchAgent Italy Market Report",
         "",
-        f"Generated: {dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat()}",
+        f"Generated: {dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()}",
         "",
         "Sources:",
         "- TED Search API active public procurement notices stored in `archagent_actionable_projects.sqlite3`.",

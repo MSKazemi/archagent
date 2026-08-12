@@ -30,7 +30,7 @@ def run_backup(
     keep: int = 30,
 ) -> list[Path]:
     backup_dir.mkdir(parents=True, exist_ok=True)
-    stamp = dt.datetime.now(dt.UTC).strftime('%Y%m%d_%H%M%S')
+    stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d_%H%M%S')
     created: list[Path] = []
     for db_name in DBS:
         src = BASE / db_name

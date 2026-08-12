@@ -23,6 +23,11 @@ All notable changes to ArchAgent / BuildingOS. Pure Python 3 stdlib; zero runtim
   previously declared no `User=` and would have run as root.
 
 ### Fixed
+- **`datetime.UTC` broke every documented Python version below 3.11.** `dossiers.py`,
+  `core/backup.py`, and `markets/italy/report.py` used `dt.UTC`, which was only added in
+  3.11 — so dossier generation, backups, and the market report raised `AttributeError` on
+  3.9 and 3.10, despite the project documenting a 3.9 floor. Replaced with
+  `dt.timezone.utc`. Caught by the new CI matrix on its first run.
 - `deploy/archagent-refresh.service` invoked `archagent_production_refresh.py`, which has not
   existed since the package restructure; it now calls `ops/refresh.py`.
 - `docs/DEPLOYMENT.md` referenced five pre-restructure script paths that no longer exist.
@@ -40,6 +45,10 @@ All notable changes to ArchAgent / BuildingOS. Pure Python 3 stdlib; zero runtim
 - Stale root `healthcheck.py` (superseded by `ops/healthcheck.py`).
 
 ### Added
+- `tests/fixtures.py` — isolated, self-seeding test fixtures. The end-to-end tests
+  previously asserted on row counts that only held because a populated production database
+  was committed, and mutated the developer's live database. They now build a temp database
+  with fabricated records and assert against named constants.
 - `core.db.init_leads_db()` — creates the leads-database schema if absent, called at server
   startup alongside `init_app_db()`. A fresh clone is runnable with no data files present;
   populate with `ops/refresh.py`.
