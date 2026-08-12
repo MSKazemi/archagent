@@ -15,6 +15,16 @@ All notable changes to ArchAgent / BuildingOS. Pure Python 3 stdlib; zero runtim
 - `llms.txt` — factual project summary for AI answer engines.
 
 ### Security
+- **`docker-compose.yml` shipped a login-breaking cookie/TLS mismatch.** Docker sets
+  `ARCHAGENT_HOST=0.0.0.0`, so the app marked session cookies `Secure`, while the bundled
+  nginx serves plain HTTP — browsers reject `Secure` cookies over HTTP, so admin-console
+  login failed with no useful error. The stack now defaults `ARCHAGENT_SECURE_COOKIES=0`
+  with an explicit note to set it to `1` behind real TLS.
+- nginx now publishes on `127.0.0.1:80` instead of `0.0.0.0:80`, so the HTTP-only stack is
+  not reachable off-box by default.
+- `docs/DEPLOYMENT.md` gained a secrets section (what each secret is, the `.env`-never-
+  overrides-real-env resolution order, file permissions, rotation, backup) and a hardened
+  TLS/firewall section with off-box verification commands.
 - **`validate_admin_credentials()`** — the server now refuses to bind a non-loopback address
   when `ARCHAGENT_ADMIN_PASSWORD` is a well-known default or shorter than 12 characters, and
   warns about it on localhost. Previously only `ARCHAGENT_TOKEN` was validated.

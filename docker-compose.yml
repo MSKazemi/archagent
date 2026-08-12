@@ -1,3 +1,14 @@
+# Local / single-VM stack. Read the security notes before exposing this anywhere.
+#
+# Secrets are NEVER baked into the image. They reach the container two ways:
+#   1. this file reads them from your shell or from a .env sitting next to it
+#      (docker compose loads ./.env automatically for ${...} substitution), and
+#   2. the bind mount below puts the project directory — including your .env —
+#      inside the container, where archagent_server.py loads it at startup.
+# Either is fine locally. On a real host prefer an explicit secrets mechanism
+# (docker secrets, systemd EnvironmentFile, or your platform's secret store) and
+# keep .env at chmod 600, owned by the user the container runs as.
+
 services:
   archagent:
     build: .
@@ -7,16 +18,27 @@ services:
       ARCHAGENT_HOST: 0.0.0.0
       ARCHAGENT_PORT: 8091
       ARCHAGENT_HEALTH_HOST: 127.0.0.1
+      # The app adds the Secure flag to session cookies whenever it is bound to a
+      # non-loopback address — which is always true in Docker. The bundled nginx
+      # below terminates plain HTTP, and browsers REJECT Secure cookies sent over
+      # HTTP, so admin-console login would silently fail. Default to 0 for this
+      # HTTP-only local stack; set it to 1 the moment you put real TLS in front.
+      ARCHAGENT_SECURE_COOKIES: ${ARCHAGENT_SECURE_COOKIES:-0}
     expose:
       - "8091"
     volumes:
       - ./:/app
     restart: unless-stopped
 
+  # NOTE: this proxy is HTTP-only and is meant for local use or for sitting behind
+  # another TLS terminator. Do not publish port 80 to the internet as-is — the API
+  # token and the session cookie would travel in cleartext. For an internet-facing
+  # VM, terminate TLS (Caddy/nginx + certbot) and set ARCHAGENT_SECURE_COOKIES=1.
+  # See docs/DEPLOYMENT.md.
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
+      - "127.0.0.1:80:80"
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

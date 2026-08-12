@@ -15,7 +15,10 @@ whether the deadline is realistic.
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](requirements.txt)
 [![Tests](https://github.com/MSKazemi/archagent/actions/workflows/tests.yml/badge.svg)](https://github.com/MSKazemi/archagent/actions/workflows/tests.yml)
 
-![The ArchAgent workspace — tender radar with fit scores, deadlines and buyers](docs/assets/workspace-overview.jpg)
+![Walking through the ArchAgent workspace: overview, lead radar, Italy market, partner research](docs/assets/walkthrough.gif)
+
+<sub>Overview → Lead Radar → Italy Market → Partner research. All data shown is fabricated
+demo data (`ops/seed_demo.py`) — no real tenders or contacts ship with this repository.</sub>
 
 **What it does:** turns raw public tender notices into a bid/no-bid decision with the SOA
 class, guarantee amounts, and document checklist worked out.
@@ -198,10 +201,6 @@ All 52 SOA categories (OG1–OG13, OS1–OS35) plus the classifica value bands.
 > these images — the buyers ("Comune di Valdirosa", "ATER Provincia di Selvana") and the
 > partner listings are invented.
 
-**Walkthrough** — Overview → Lead Radar → Italy Market → Partner research.
-
-![Walking through the ArchAgent workspace: overview, lead radar, Italy market, partner research](docs/assets/walkthrough.gif)
-
 **Italy Market Command Center** — qualified opportunities ranked by fit score, with the
 matching offer and a one-click bid-readiness dossier per lead.
 
@@ -285,6 +284,40 @@ falls back to an implicit admin for development convenience. The server refuses 
 non-loopback bind with a placeholder/short token or a weak admin password. See
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for systemd, hardening, and reverse-proxy setup, and
 [SECURITY.md](SECURITY.md) to report a vulnerability.
+
+## Secrets and configuration
+
+**Nothing secret lives in this repository, and nothing secret should ever be committed to
+your copy.** All configuration comes from the environment; `.env` is gitignored and
+`.env.example` contains only placeholders.
+
+| Secret | Variable | Generate with |
+|---|---|---|
+| API token (admin-equivalent) | `ARCHAGENT_TOKEN` | `openssl rand -hex 32` |
+| First admin password | `ARCHAGENT_ADMIN_PASSWORD` | `python3 -c 'import secrets; print(secrets.token_urlsafe(24))'` |
+| Azure OpenAI key (optional) | `AZURE_OPENAI_KEY` | from the Azure portal |
+| SMTP password (optional) | `SMTP_PASS` | your mail provider |
+
+How they reach the process:
+
+```bash
+cp .env.example .env         # then fill it in
+chmod 600 .env               # never world-readable
+```
+
+`.env` is read at startup and **never overrides variables already set in the real
+environment**, so a systemd `EnvironmentFile=`, a container env var, or your platform's
+secret store always wins. That ordering is what lets the same `.env` sit safely in a repo
+checkout while production injects real values from elsewhere.
+
+The server refuses to start on a non-loopback bind if `ARCHAGENT_TOKEN` is missing, a known
+placeholder, or under 32 characters, or if `ARCHAGENT_ADMIN_PASSWORD` is a common default or
+under 12 characters. On localhost it warns instead, so development stays frictionless.
+
+**Deploying to a VM?** Read [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — it covers the
+unprivileged service account, file permissions, systemd `EnvironmentFile`, TLS termination,
+firewall posture, and the `Secure`-cookie interaction that will otherwise break login behind
+plain HTTP.
 
 ## Layout
 
