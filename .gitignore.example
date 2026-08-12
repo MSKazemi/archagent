@@ -1,0 +1,43 @@
+# Copy to .gitignore before your first commit:  cp .gitignore.example .gitignore
+# (.gitignore is intentionally not tracked; this template is.)
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Databases — runtime data, never source. Rebuilt by init_app_db() /
+# init_leads_db() on first run and populated by ops/refresh.py.
+# They hold real leads, contacts and credentials; they must never be committed.
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.log
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Generated runtime artifacts — recreatable, never committed. Generated
+# dossiers/proposals/outreach name real buyers and tenders.
+exports/
+backups/
+data/
+
+# Claude Code artifacts
+.claude/
+
+# Playwright MCP
+.playwright-mcp/
+
+# OS/editor
+.DS_Store
+.vscode/
+.cursor/
+.idea/
+.gstack

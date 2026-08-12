@@ -35,7 +35,8 @@ The same applies to `exports/`, `backups/`, and `data/` — all generated, all g
 
 ```bash
 git clone <your-fork-url> archagent && cd archagent
-cp .env.example .env          # then edit: set a long ARCHAGENT_TOKEN
+cp .gitignore.example .gitignore   # keeps databases, exports and .env out of git
+cp .env.example .env               # then edit: set a long ARCHAGENT_TOKEN
 python3 archagent_server.py --host 127.0.0.1 --port 8091
 ```
 
