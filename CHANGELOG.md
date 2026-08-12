@@ -45,6 +45,11 @@ All notable changes to ArchAgent / BuildingOS. Pure Python 3 stdlib; zero runtim
 - Stale root `healthcheck.py` (superseded by `ops/healthcheck.py`).
 
 ### Added
+- **`ops/seed_demo.py`** — seeds fabricated demo data (60 invented tenders, 30 partner
+  listings, Italy profiles) so a fresh clone is explorable in a second without network.
+  Idempotent; `--clear` removes exactly its own rows. All records are invented.
+- **Screenshots** in `docs/assets/` + a Screenshots section in the README, captured from a
+  demo instance seeded with `ops/seed_demo.py` — no real leads or contacts appear.
 - `tests/fixtures.py` — isolated, self-seeding test fixtures. The end-to-end tests
   previously asserted on row counts that only held because a populated production database
   was committed, and mutated the developer's live database. They now build a temp database

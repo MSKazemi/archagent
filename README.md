@@ -15,6 +15,8 @@ whether the deadline is realistic.
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](requirements.txt)
 [![Tests](https://github.com/MSKazemi/archagent/actions/workflows/tests.yml/badge.svg)](https://github.com/MSKazemi/archagent/actions/workflows/tests.yml)
 
+![The ArchAgent workspace — tender radar with fit scores, deadlines and buyers](docs/assets/workspace-overview.jpg)
+
 **What it does:** turns raw public tender notices into a bid/no-bid decision with the SOA
 class, guarantee amounts, and document checklist worked out.
 **Who it's for:** Italian and EU construction firms, design studios, ESCOs, bid managers, and
@@ -64,7 +66,17 @@ API stats: http://127.0.0.1:8091/api/stats
 ```
 
 Both databases are created empty on first start. Open `http://127.0.0.1:8091/app` for the
-portal, `/admin` for the admin console, or query the API directly. To populate real leads:
+portal, `/admin` for the admin console, or query the API directly.
+
+**To see it with data immediately**, seed fabricated demo records (no network, ~1 second —
+this is what the screenshots below show):
+
+```bash
+python3 ops/seed_demo.py          # 60 invented tenders + 30 partner listings
+python3 ops/seed_demo.py --clear  # remove them again
+```
+
+To pull **real** tender notices from TED instead:
 
 ```bash
 python3 ops/refresh_italy.py --skip-workers
@@ -178,6 +190,27 @@ All 52 SOA categories (OG1–OG13, OS1–OS35) plus the classifica value bands.
   sessions, scoped API keys, login lockout, role-based route permissions, token-bucket rate
   limiting, audit trail, backup/verify/restore, CSV/JSON/zip export, GDPR subject
   export/erase, retention purge. All standard library.
+
+## Screenshots
+
+> Every screenshot below shows **fabricated demo data**. No real procurement leads, buyers,
+> or business contacts ship with this repository or appear in these images — the buyers
+> ("Comune di Valdirosa", "ATER Provincia di Selvana") and the partner listings are invented.
+
+**Italy Market Command Center** — qualified opportunities ranked by fit score, with the
+matching offer and a one-click bid-readiness dossier per lead.
+
+![Italy Market Command Center — leads ranked by Italy fit score with dossier generation](docs/assets/italy-market.jpg)
+
+**Admin control plane** — request metrics, error rate, latency percentiles, row counts,
+database size, backup state, and the attributed activity log.
+
+![Admin console overview — metrics, DB size, backups and recent activity](docs/assets/admin-console.jpg)
+
+**Landing page** — the public marketing page served at `/`, with a dependency-free
+Three.js hero (vendored, no build step).
+
+![ArchAgent landing page with 3D wireframe hero](docs/assets/landing-page.jpg)
 
 ## Use cases
 

@@ -144,6 +144,10 @@ python3 -m archagent.markets.italy.report     # regenerate report from existing 
 # Backups:
 python3 ops/backup.py --include-exports --keep 30
 
+# Fabricated demo data for screenshots / local exploration (no network):
+python3 ops/seed_demo.py
+python3 ops/seed_demo.py --clear
+
 # Full data export (zip of every table, both DBs) → exports/:
 python3 ops/export.py
 # Export + purge old records (destructive, explicit opt-in):
