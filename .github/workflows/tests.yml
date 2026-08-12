@@ -26,11 +26,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Show environment
-        run: python3 --version
+      # No Python dependency install step: ArchAgent is standard-library only and
+      # requirements.txt is intentionally empty. poppler-utils is a *system* tool the
+      # optional analyst module shells out to (pdftotext / pdftoppm); tests/test_analyst.py
+      # exercises the real binaries rather than mocking them.
+      - name: Install poppler-utils (pdftotext / pdftoppm)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
 
-      # No dependency install step: ArchAgent is standard-library only.
-      # requirements.txt is intentionally empty — see README.
+      - name: Show environment
+        run: |
+          python3 --version
+          pdftotext -v
 
       - name: Unit and integration tests (isolated temp databases)
         run: |

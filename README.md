@@ -269,7 +269,9 @@ tests/      nine self-contained test scripts
 
 ## Tests
 
-Each script is self-contained and prints a single `PASS ...` line.
+Each script is self-contained and prints a single `PASS ...` line. `test_analyst.py` shells out
+to `pdftotext`, so install `poppler-utils` (Debian/Ubuntu) or `poppler` (macOS) before running
+the full suite; everything else needs nothing but Python.
 
 ```bash
 python3 tests/test_db.py           # schema creation, WAL mode

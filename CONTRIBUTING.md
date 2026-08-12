@@ -24,7 +24,16 @@ cp .env.example .env
 python3 archagent_server.py --host 127.0.0.1 --port 8091
 ```
 
-Nothing to install. Python 3.9+ is the floor and CI enforces it.
+No Python packages to install — Python 3.9+ is the floor and CI enforces it.
+
+One **system** tool is needed to run the full test suite: `poppler-utils`, which provides the
+`pdftotext` and `pdftoppm` binaries the optional analyst module shells out to. Without it,
+`tests/test_analyst.py` errors rather than skipping.
+
+```bash
+sudo apt-get install poppler-utils   # Debian/Ubuntu
+brew install poppler                 # macOS
+```
 
 ## Running the tests
 
