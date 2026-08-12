@@ -1,5 +1,6 @@
 [Unit]
 Description=ArchAgent database backup (both DBs + exports, integrity-verified, pruned)
+Documentation=https://github.com/MSKazemi/archAgent
 After=network.target
 
 [Service]
@@ -7,3 +8,17 @@ Type=oneshot
 WorkingDirectory=/opt/archagent
 EnvironmentFile=-/opt/archagent/.env
 ExecStart=/usr/bin/python3 /opt/archagent/ops/backup.py --include-exports --keep 30
+User=archagent
+Group=archagent
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+ReadWritePaths=/opt/archagent

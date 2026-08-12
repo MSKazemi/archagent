@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a capability
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [ROADMAP.md](https://github.com/MSKazemi/archAgent/blob/main/ROADMAP.md) first.
+        Note the hard constraint: **no runtime dependencies** — proposals must be implementable
+        with the Python standard library.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation you are in, not just the feature you want.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: This can be implemented with the Python standard library only
+          required: true

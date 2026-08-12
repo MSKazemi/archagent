@@ -1,0 +1,61 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.11', '3.13']
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show environment
+        run: python3 --version
+
+      # No dependency install step: ArchAgent is standard-library only.
+      # requirements.txt is intentionally empty — see README.
+
+      - name: Unit and integration tests (isolated temp databases)
+        run: |
+          python3 tests/test_db.py
+          python3 tests/test_procurement.py
+          python3 tests/test_maintenance.py
+          python3 tests/test_analyst.py
+          python3 tests/test_admin.py
+          python3 tests/test_admin_data.py
+
+      - name: End-to-end tests (spawn a live server)
+        run: |
+          python3 tests/test_smoke.py
+          python3 tests/test_regression.py
+          python3 tests/test_italy.py
+
+      - name: Database integrity check
+        run: python3 ops/maintenance.py
+
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.9'
+      - name: Byte-compile every module (syntax floor for Python 3.9)
+        run: python3 -m compileall -q archagent ops tests archagent_server.py

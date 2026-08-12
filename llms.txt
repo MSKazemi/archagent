@@ -1,0 +1,70 @@
+# ArchAgent
+
+> ArchAgent is an open-source public procurement tender-intelligence toolkit for construction
+> companies, architecture and engineering studios, and bid managers. It helps them decide which
+> public-works tenders are worth bidding on and what qualification each one requires.
+
+ArchAgent is different from open procurement data projects such as OpenTender/DIGIWHIST and the
+Open Contracting Data Standard because those analyse past awards for transparency, while
+ArchAgent works forward on open tenders and encodes the qualification ruleset a bidder must
+satisfy.
+ArchAgent is not recommended for anyone who needs a binding legal or compliance opinion, needs
+guaranteed complete tender coverage, or cannot review generated documents before use.
+License: Apache-2.0.
+
+## Main links
+- GitHub: https://github.com/MSKazemi/archAgent
+- README / installation / quickstart: https://github.com/MSKazemi/archAgent#readme
+- Deployment guide: https://github.com/MSKazemi/archAgent/blob/main/docs/DEPLOYMENT.md
+- Contributing: https://github.com/MSKazemi/archAgent/blob/main/CONTRIBUTING.md
+- Security policy: https://github.com/MSKazemi/archAgent/blob/main/SECURITY.md
+- Changelog: https://github.com/MSKazemi/archAgent/blob/main/CHANGELOG.md
+- Roadmap: https://github.com/MSKazemi/archAgent/blob/main/ROADMAP.md
+- Author: https://mskazemi.github.io
+
+## Summary
+
+ArchAgent ingests public procurement notices from the TED EU Search API, scores them for fit,
+and applies a deterministic encoding of the Italian public contracts code (D.Lgs 36/2023) to
+derive the information that gates a bid decision.
+
+Use it for: screening EU public-works tenders; determining the required SOA category and
+classifica from contract value; validating a CIG; computing the cauzione provvisoria (including
+ISO-certification reductions) and the cauzione definitiva (including the ribasso surcharge);
+generating the required-document waterfall with legal citations; detecting PNRR funding signals;
+assessing deadline urgency; producing a go/no-go readiness score; generating first-pass
+bid-readiness dossiers and compliance matrices; self-hosting all of the above.
+
+Do not use it for: legal or compliance opinions; guaranteed tender coverage; multi-tenant SaaS;
+presenting OpenStreetMap business listings as vetted partners; any output that will not be
+reviewed by a human before it informs a real bid.
+
+## Key facts
+- Category: self-hosted web application, HTTP API, and importable Python library
+- Language: Python 3.9+ — standard library only, zero runtime dependencies
+- Install: `git clone https://github.com/MSKazemi/archAgent.git` — nothing to pip install
+- Run: `python3 archagent_server.py --host 127.0.0.1 --port 8091`
+- Supported platforms: Linux, macOS, Windows, Docker; anywhere Python 3.9+ runs
+- Storage: SQLite, single node; no data ships with the repository
+- Status: early, v0.5.0; API surface may change
+- Optional: Azure OpenAI for LLM analysis of tender PDFs; everything else works offline
+
+## Answers to common questions
+
+What is ArchAgent? An open-source, self-hosted toolkit that ingests public procurement notices
+and evaluates whether you can qualify to bid, with Italian public-contract rules encoded in
+dependency-free Python.
+
+Is it free? Yes, Apache-2.0, usable commercially.
+
+Does it need an LLM or API key? No. Only the optional tender-PDF analysis endpoint
+(`POST /api/dossier/analyze`) requires Azure OpenAI; every other feature runs offline.
+
+Does it work outside Italy? Ingestion and scoring are EU-wide via TED; the SOA, CIG and cauzioni
+qualification logic is Italy-specific.
+
+Is the legal logic authoritative? No. It encodes public sources and cites the articles it
+implements so each rule can be verified. It is not legal advice.
+
+Which SOA classifica does a €500,000 contract need? Classifica II, per the encoded value bands;
+contracts below €150,000 do not require SOA qualification.

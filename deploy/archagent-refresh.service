@@ -1,9 +1,24 @@
 [Unit]
-Description=ArchAgent production refresh job
+Description=ArchAgent production refresh job (backup, TED refresh, dossiers, tests, maintenance)
+Documentation=https://github.com/MSKazemi/archAgent
 After=network.target
 
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/archagent
 EnvironmentFile=-/opt/archagent/.env
-ExecStart=/usr/bin/python3 /opt/archagent/archagent_production_refresh.py --skip-workers --dossiers 5
+ExecStart=/usr/bin/python3 /opt/archagent/ops/refresh.py --skip-workers --dossiers 5
+User=archagent
+Group=archagent
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+ReadWritePaths=/opt/archagent

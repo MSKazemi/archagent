@@ -1,5 +1,6 @@
 [Unit]
 Description=ArchAgent BuildingOS API
+Documentation=https://github.com/MSKazemi/archAgent
 After=network.target
 
 [Service]
@@ -10,10 +11,21 @@ Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 /opt/archagent/archagent_server.py --host 127.0.0.1 --port 8091
 Restart=on-failure
 RestartSec=5
+User=archagent
+Group=archagent
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=full
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
 ReadWritePaths=/opt/archagent
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 
 [Install]
 WantedBy=multi-user.target

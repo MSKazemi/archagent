@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: "ArchAgent: open-source public procurement tender intelligence for construction"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Seyedkazemi Ardebili"
+    given-names: "Mohsen"
+    website: "https://mskazemi.github.io"
+repository-code: "https://github.com/MSKazemi/archAgent"
+url: "https://github.com/MSKazemi/archAgent"
+abstract: >-
+  ArchAgent is an open-source, dependency-free tender-intelligence toolkit for public-works
+  procurement. It ingests notices from the TED EU Search API, scores them for fit, and applies
+  a deterministic encoding of the Italian public contracts code (D.Lgs 36/2023) to derive SOA
+  qualification requirements, CIG validation, provisional and definitive guarantee amounts,
+  the required-document waterfall, PNRR signals, deadline urgency, and a go/no-go
+  recommendation.
+keywords:
+  - public procurement
+  - tender intelligence
+  - construction
+  - D.Lgs 36/2023
+  - SOA qualification
+  - TED
+  - open data
+license: Apache-2.0
+version: 0.5.0

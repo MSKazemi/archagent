@@ -39,6 +39,7 @@ from archagent.api.auth import (
     auth_enabled,
     read_json,
     validate_token_config,
+    validate_admin_credentials,
 )
 from archagent.core import auth_db, sessions
 from archagent.api.handlers import (
@@ -508,6 +509,7 @@ def main():
     parser.add_argument('--port', type=int, default=int(os.getenv('ARCHAGENT_PORT', '8091')))
     args = parser.parse_args()
     validate_token_config(args.host)
+    validate_admin_credentials(args.host)
     init_app_db()
     init_leads_db()
     os.chdir(BASE)

@@ -26,6 +26,42 @@ def token_is_placeholder(token: str) -> bool:
     return token in {'change-me-use-openssl-rand-hex-32', 'replace-with-long-random-token', 'changeme'}
 
 
+# Credentials that appear in the docs, in examples, or at the top of every wordlist.
+# Seeding an admin account with one of these is the single most common way a
+# self-hosted deployment gets taken over.
+_WEAK_PASSWORDS = {
+    'admin', 'password', 'changeme', 'change-me', 'secret', '123456', '12345678',
+    'letmein', 'archagent', 'choose-a-strong-password', 'your-password', 'test',
+}
+
+
+def validate_admin_credentials(host: str = '127.0.0.1') -> None:
+    """Reject weak bootstrap-admin passwords; warn about them even on localhost.
+
+    Only applies to the *bootstrap* password read from the environment on first
+    run — passwords set later through the admin console are not affected.
+    """
+    import sys
+    password = os.getenv('ARCHAGENT_ADMIN_PASSWORD', '')
+    if not password:
+        return
+    is_local = host in _LOCAL_HOSTS
+    weak = password.strip().lower() in _WEAK_PASSWORDS
+    short = len(password) < 12
+    if not (weak or short):
+        return
+    reason = 'a well-known default' if weak else f'shorter than 12 characters (length: {len(password)})'
+    if not is_local:
+        raise SystemExit(
+            f'Refusing to bind {host!r} with an ARCHAGENT_ADMIN_PASSWORD that is {reason}. '
+            'Choose a strong password, e.g. '
+            "python3 -c 'import secrets; print(secrets.token_urlsafe(24))'"
+        )
+    print(f'[WARNING] ARCHAGENT_ADMIN_PASSWORD is {reason}. This is only tolerated on '
+          'localhost — change it before exposing this deployment to any network.',
+          file=sys.stderr, flush=True)
+
+
 def validate_token_config(host: str = '127.0.0.1') -> None:
     import sys
     token = configured_token()

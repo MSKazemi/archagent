@@ -4,6 +4,30 @@ All notable changes to ArchAgent / BuildingOS. Pure Python 3 stdlib; zero runtim
 
 ## [Unreleased] — public-release preparation
 
+### Added (open-source surfaces)
+- **`LICENSE` (Apache-2.0)** + `NOTICE` — the repository was previously unlicensed, i.e. all
+  rights reserved. Bundled Three.js (MIT) attributed.
+- Community health: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `SUPPORT.md`,
+  `CITATION.cff`, `.github/FUNDING.yml`, PR template, and three issue forms (bug, feature,
+  and a dedicated **procurement-rule correction** form that requires a legal citation).
+- **CI** — `.github/workflows/tests.yml` runs all nine test scripts plus the integrity check on
+  Python 3.9 / 3.11 / 3.13, and byte-compiles every module against the 3.9 floor.
+- `llms.txt` — factual project summary for AI answer engines.
+
+### Security
+- **`validate_admin_credentials()`** — the server now refuses to bind a non-loopback address
+  when `ARCHAGENT_ADMIN_PASSWORD` is a well-known default or shorter than 12 characters, and
+  warns about it on localhost. Previously only `ARCHAGENT_TOKEN` was validated.
+- systemd units now run as an unprivileged `archagent` user with `ProtectSystem=strict`,
+  `ProtectHome`, `PrivateDevices`, `RestrictSUIDSGID`, and a restricted address family — they
+  previously declared no `User=` and would have run as root.
+
+### Fixed
+- `deploy/archagent-refresh.service` invoked `archagent_production_refresh.py`, which has not
+  existed since the package restructure; it now calls `ops/refresh.py`.
+- `docs/DEPLOYMENT.md` referenced five pre-restructure script paths that no longer exist.
+
+
 ### Removed (breaking for existing clones)
 - **The three SQLite databases are no longer tracked** and have been purged from the whole git
   history. They are runtime data, not source: they held real procurement leads, 1100 scraped

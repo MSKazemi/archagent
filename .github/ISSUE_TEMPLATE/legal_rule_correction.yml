@@ -1,0 +1,37 @@
+name: Procurement rule correction
+description: A D.Lgs 36/2023 (or other legal) rule is encoded incorrectly
+labels: ["legal-accuracy"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These are the most valuable reports this project receives. The encoding is written by
+        an engineer, not a lawyer — corrections with a citation are merged quickly.
+  - type: input
+    id: rule
+    attributes:
+      label: Which rule or function?
+      placeholder: "cauzione_provvisoria() / infer_soa_class() / document waterfall row X"
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: What it currently produces
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: correct
+    attributes:
+      label: What it should produce, and why
+    validations:
+      required: true
+  - type: input
+    id: citation
+    attributes:
+      label: Legal citation
+      description: Article and source (Normattiva link, ANAC guidance, gazette reference)
+      placeholder: "D.Lgs 36/2023, Art. 106 co. 8 — https://www.normattiva.it/..."
+    validations:
+      required: true
