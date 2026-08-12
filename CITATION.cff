@@ -6,8 +6,8 @@ authors:
   - family-names: "Seyedkazemi Ardebili"
     given-names: "Mohsen"
     website: "https://mskazemi.github.io"
-repository-code: "https://github.com/MSKazemi/archAgent"
-url: "https://github.com/MSKazemi/archAgent"
+repository-code: "https://github.com/MSKazemi/archagent"
+url: "https://github.com/MSKazemi/archagent"
 abstract: >-
   ArchAgent is an open-source, dependency-free tender-intelligence toolkit for public-works
   procurement. It ingests notices from the TED EU Search API, scores them for fit, and applies

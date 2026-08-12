@@ -10,7 +10,7 @@ The bundled units run as an unprivileged `archagent` user — never as root.
 
 ```bash
 sudo useradd --system --home-dir /opt/archagent --shell /usr/sbin/nologin archagent
-sudo git clone https://github.com/MSKazemi/archAgent.git /opt/archagent
+sudo git clone https://github.com/MSKazemi/archagent.git /opt/archagent
 sudo chown -R archagent:archagent /opt/archagent
 ```
 

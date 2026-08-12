@@ -13,13 +13,13 @@ guaranteed complete tender coverage, or cannot review generated documents before
 License: Apache-2.0.
 
 ## Main links
-- GitHub: https://github.com/MSKazemi/archAgent
-- README / installation / quickstart: https://github.com/MSKazemi/archAgent#readme
-- Deployment guide: https://github.com/MSKazemi/archAgent/blob/main/docs/DEPLOYMENT.md
-- Contributing: https://github.com/MSKazemi/archAgent/blob/main/CONTRIBUTING.md
-- Security policy: https://github.com/MSKazemi/archAgent/blob/main/SECURITY.md
-- Changelog: https://github.com/MSKazemi/archAgent/blob/main/CHANGELOG.md
-- Roadmap: https://github.com/MSKazemi/archAgent/blob/main/ROADMAP.md
+- GitHub: https://github.com/MSKazemi/archagent
+- README / installation / quickstart: https://github.com/MSKazemi/archagent#readme
+- Deployment guide: https://github.com/MSKazemi/archagent/blob/main/docs/DEPLOYMENT.md
+- Contributing: https://github.com/MSKazemi/archagent/blob/main/CONTRIBUTING.md
+- Security policy: https://github.com/MSKazemi/archagent/blob/main/SECURITY.md
+- Changelog: https://github.com/MSKazemi/archagent/blob/main/CHANGELOG.md
+- Roadmap: https://github.com/MSKazemi/archagent/blob/main/ROADMAP.md
 - Author: https://mskazemi.github.io
 
 ## Summary
@@ -42,7 +42,7 @@ reviewed by a human before it informs a real bid.
 ## Key facts
 - Category: self-hosted web application, HTTP API, and importable Python library
 - Language: Python 3.9+ — standard library only, zero runtime dependencies
-- Install: `git clone https://github.com/MSKazemi/archAgent.git` — nothing to pip install
+- Install: `git clone https://github.com/MSKazemi/archagent.git` — nothing to pip install
 - Run: `python3 archagent_server.py --host 127.0.0.1 --port 8091`
 - Supported platforms: Linux, macOS, Windows, Docker; anywhere Python 3.9+ runs
 - Storage: SQLite, single node; no data ships with the repository

@@ -7,10 +7,10 @@ kind of question.
 |---|---|
 | Understand what it does and how to start | [README.md](README.md) |
 | Deploy it on a server | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
-| Report a bug | [Open an issue](https://github.com/MSKazemi/archAgent/issues/new/choose) |
+| Report a bug | [Open an issue](https://github.com/MSKazemi/archagent/issues/new/choose) |
 | Report a security vulnerability | [SECURITY.md](SECURITY.md) — **not** a public issue |
 | Correct the legal/procurement logic | Open an issue with the article citation |
-| Propose a feature | [Open an issue](https://github.com/MSKazemi/archAgent/issues/new/choose) |
+| Propose a feature | [Open an issue](https://github.com/MSKazemi/archagent/issues/new/choose) |
 | Contribute code | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | See what is planned | [ROADMAP.md](ROADMAP.md) |
 

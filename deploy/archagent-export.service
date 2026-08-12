@@ -1,6 +1,6 @@
 [Unit]
 Description=ArchAgent weekly full data export (zip of every table, both DBs)
-Documentation=https://github.com/MSKazemi/archAgent
+Documentation=https://github.com/MSKazemi/archagent
 After=network.target
 
 [Service]

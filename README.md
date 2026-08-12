@@ -13,7 +13,7 @@ whether the deadline is realistic.
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](requirements.txt)
-[![Tests](https://github.com/MSKazemi/archAgent/actions/workflows/tests.yml/badge.svg)](https://github.com/MSKazemi/archAgent/actions/workflows/tests.yml)
+[![Tests](https://github.com/MSKazemi/archagent/actions/workflows/tests.yml/badge.svg)](https://github.com/MSKazemi/archagent/actions/workflows/tests.yml)
 
 **What it does:** turns raw public tender notices into a bid/no-bid decision with the SOA
 class, guarantee amounts, and document checklist worked out.
@@ -43,7 +43,7 @@ The whole system is **pure Python 3 standard library**: no pip install, no build
 ## Install
 
 ```bash
-git clone https://github.com/MSKazemi/archAgent.git && cd archAgent
+git clone https://github.com/MSKazemi/archagent.git && cd archagent
 cp .gitignore.example .gitignore
 cp .env.example .env
 ```

@@ -14,7 +14,7 @@ ArchAgent is early software. Only the latest commit on `main` receives security 
 **Do not open a public issue for a security vulnerability.**
 
 Report privately through
-[GitHub Security Advisories](https://github.com/MSKazemi/archAgent/security/advisories/new),
+[GitHub Security Advisories](https://github.com/MSKazemi/archagent/security/advisories/new),
 which is the preferred channel. If that is unavailable to you, contact the maintainer through
 [mskazemi.github.io](https://mskazemi.github.io).
 

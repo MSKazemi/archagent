@@ -18,7 +18,7 @@ however good it is otherwise:
 ## Development setup
 
 ```bash
-git clone https://github.com/MSKazemi/archAgent.git && cd archAgent
+git clone https://github.com/MSKazemi/archagent.git && cd archagent
 cp .gitignore.example .gitignore
 cp .env.example .env
 python3 archagent_server.py --host 127.0.0.1 --port 8091

@@ -1,6 +1,6 @@
 [Unit]
 Description=ArchAgent database backup (both DBs + exports, integrity-verified, pruned)
-Documentation=https://github.com/MSKazemi/archAgent
+Documentation=https://github.com/MSKazemi/archagent
 After=network.target
 
 [Service]

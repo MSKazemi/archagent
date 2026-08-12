@@ -1,6 +1,6 @@
 [Unit]
 Description=ArchAgent BuildingOS API
-Documentation=https://github.com/MSKazemi/archAgent
+Documentation=https://github.com/MSKazemi/archagent
 After=network.target
 
 [Service]

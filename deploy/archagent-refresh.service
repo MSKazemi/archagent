@@ -1,6 +1,6 @@
 [Unit]
 Description=ArchAgent production refresh job (backup, TED refresh, dossiers, tests, maintenance)
-Documentation=https://github.com/MSKazemi/archAgent
+Documentation=https://github.com/MSKazemi/archagent
 After=network.target
 
 [Service]
