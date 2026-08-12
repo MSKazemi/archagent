@@ -13,6 +13,14 @@ import urllib.request
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent  # project root
+sys.path.insert(0, str(BASE))
+import tests.fixtures as fixtures  # noqa: E402  — must precede any archagent import
+
+# Isolated, self-seeded databases (see tests/fixtures.py). These tests create and mutate
+# records, so they must never run against a developer's live database.
+_DB_ENV = fixtures.isolate()
+_SEEDED = fixtures.seed_all()
+
 PORT = 8093
 URL = f"http://127.0.0.1:{PORT}"
 TOKEN = "test-secret-token"
@@ -118,7 +126,7 @@ def main():
     for city in ("Rome", "Milan", "Turin", "Naples", "Bologna"):
         assert city in area_result.stdout, area_result.stdout
 
-    bad_env = os.environ.copy()
+    bad_env = {**os.environ, **_DB_ENV}
     bad_env["ARCHAGENT_TOKEN"] = "change-me-use-openssl-rand-hex-32"
     bad_token = subprocess.run(
         [sys.executable, "archagent_server.py", "--port", "8099"],
@@ -132,7 +140,7 @@ def main():
     assert bad_token.returncode != 0, bad_token.stdout + bad_token.stderr
     assert "placeholder ARCHAGENT_TOKEN" in (bad_token.stdout + bad_token.stderr)
 
-    env = os.environ.copy()
+    env = {**os.environ, **_DB_ENV}
     env["ARCHAGENT_TOKEN"] = TOKEN
     proc = subprocess.Popen(
         [sys.executable, "archagent_server.py", "--port", str(PORT)],
@@ -155,7 +163,7 @@ def main():
         else:
             raise RuntimeError("server did not start")
 
-        assert stats["total_leads"] >= 400, stats
+        assert stats["total_leads"] == fixtures.LEAD_COUNT, stats
         expect_http_error("/api/stats", 401)
         expect_http_error("/.env", 404)
         expect_http_error("/archagent_app.sqlite3", 404)
@@ -198,23 +206,13 @@ def main():
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             proc.kill()
-        if created_profile_id or created_export_paths or created_bid_profile_id:
-            import sqlite3
-            con = sqlite3.connect(BASE / "archagent_app.sqlite3")
-            if created_profile_id:
-                con.execute("DELETE FROM customer_profiles WHERE id=?", (created_profile_id,))
-                con.execute("DELETE FROM lead_radar_exports WHERE profile_id=?", (created_profile_id,))
-                con.execute("DELETE FROM activities WHERE payload_json LIKE ? OR message LIKE ?", (f"%{created_profile_id}%", f"%#{created_profile_id}%"))
-            if created_bid_profile_id:
-                con.execute("DELETE FROM bid_profiles WHERE id=?", (created_bid_profile_id,))
-                con.execute("DELETE FROM activities WHERE payload_json LIKE ?", (f'%"id": {created_bid_profile_id}%',))
-            con.commit()
-            con.close()
-            for path in created_export_paths:
-                try:
-                    Path(path).unlink()
-                except FileNotFoundError:
-                    pass
+        # The databases are throwaway temp files, so no row cleanup is needed — but the
+        # exports are written into the repo's exports/ directory, so remove those.
+        for path in created_export_paths:
+            try:
+                Path(path).unlink()
+            except FileNotFoundError:
+                pass
 
 
 if __name__ == "__main__":

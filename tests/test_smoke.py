@@ -6,6 +6,14 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 import json, subprocess, time, urllib.request, urllib.error, sys, os
 from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent  # project root
+sys.path.insert(0, str(BASE))
+import tests.fixtures as fixtures  # noqa: E402  — must precede any archagent import
+
+# Isolated, self-seeded databases: no real data ships with the repo, and these tests
+# must never touch a developer's live database.
+_DB_ENV = fixtures.isolate()
+_SEEDED = fixtures.seed_all()
+
 PORT = 8092
 URL = f'http://127.0.0.1:{PORT}'
 
@@ -23,7 +31,7 @@ def fetch(path, payload=None):
     req = urllib.request.Request(URL + path, data=data, headers={'Content-Type': 'application/json', **_HDRS}, method='POST')
     return json.load(urllib.request.urlopen(req, timeout=10))
 
-_env = {**os.environ, 'ARCHAGENT_TOKEN': TOKEN}
+_env = {**os.environ, 'ARCHAGENT_TOKEN': TOKEN, **_DB_ENV}
 proc = subprocess.Popen([sys.executable, 'archagent_server.py', '--port', str(PORT)], cwd=BASE, env=_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 try:
     for _ in range(40):
@@ -34,7 +42,7 @@ try:
             time.sleep(0.25)
     else:
         raise RuntimeError('server did not start')
-    assert stats['total_leads'] >= 400, stats
+    assert stats['total_leads'] == fixtures.LEAD_COUNT, stats
     leads = fetch('/api/leads?limit=2')
     assert leads['items'], leads
     lead = leads['items'][0]
@@ -55,9 +63,9 @@ try:
     dossier = fetch('/api/dossier', {'lead_notice_id': lead['source_notice_id'], 'company_role': 'Architecture studio', 'package_type': 'Bid package', 'save': True})
     assert 'Project Dossier' in dossier['markdown'] and dossier.get('export_path') and dossier['matches'], dossier
     workers = fetch('/api/workers?limit=5')
-    assert workers['total'] >= 100 and workers['items'], workers
+    assert workers['total'] == fixtures.WORKER_COUNT and workers['items'], workers
     worker_stats = fetch('/api/worker-stats')
-    assert worker_stats['total_workers'] >= 100, worker_stats
+    assert worker_stats['total_workers'] == fixtures.WORKER_COUNT, worker_stats
     audit = fetch('/api/audit', {'building_type':'Office','year':'1980','problem':'energy loss'})
     assert 'Building Health Report' in audit['body']
     print('PASS smoke: leads, proposal, compliance, export, prospect, follow-up, match, outreach, dossier, workers, audit')

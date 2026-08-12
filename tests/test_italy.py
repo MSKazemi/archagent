@@ -8,6 +8,11 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 import sqlite3
 from pathlib import Path
 
+import tests.fixtures as fixtures  # must precede any archagent import
+
+# Isolated, self-seeded databases (see tests/fixtures.py).
+_DB_ENV = fixtures.isolate()
+
 from archagent.core.config import APP_DB
 from archagent.core.db import init_app_db
 from archagent.api.handlers.italy import italy_summary
@@ -31,7 +36,8 @@ def cleanup():
 
 
 def main():
-    init_app_db()
+    _SEEDED = fixtures.seed_all()
+    assert _SEEDED['leads'] == fixtures.LEAD_COUNT, _SEEDED
     cleanup()
 
     top = select_top_italy_leads(limit=5)
@@ -61,8 +67,8 @@ def main():
     assert 'Procurement portal search links' in dossier['markdown'], dossier['markdown'][:1000]
 
     summary = italy_summary()
-    assert summary['qualified_italy_leads'] >= 20, summary
-    assert summary['italy_workers'] >= 200, summary
+    assert summary['qualified_italy_leads'] == fixtures.ITALY_LEAD_COUNT, summary
+    assert summary['italy_workers'] == fixtures.WORKER_COUNT, summary
     assert summary['italy_profiles'] >= 3, summary
 
     workers = query_workers({'country': ['Italy'], 'limit': ['1']})['items']
